@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">CapybaraMess</string>
+    <string name="back_button_description">Go back.</string>
 </resources>
