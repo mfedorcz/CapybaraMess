@@ -1,17 +1,13 @@
 package com.example.capybaramess;
 
-import android.content.Intent;
 import android.os.Bundle;
-import android.view.View;
-import android.widget.ArrayAdapter;
-import android.widget.ListView;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 public class MainActivity extends AppCompatActivity {
 
-    private String[] contacts = {"Alice", "Bob", "Charlie", "David"};
+    private final String[] contacts = {"Alice", "Bob", "Charlie", "David"};
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {

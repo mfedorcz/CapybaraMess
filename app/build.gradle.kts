@@ -35,8 +35,10 @@ dependencies {
 
     implementation(libs.appcompat)
     implementation(libs.material)
-    testImplementation(libs.junit)
     implementation(libs.recyclerview)
+    implementation(libs.constraintLayout)
+    implementation(libs.androidXCoreKtx)
+    testImplementation(libs.junit)
     androidTestImplementation(libs.ext.junit)
     androidTestImplementation(libs.espresso.core)
 }
