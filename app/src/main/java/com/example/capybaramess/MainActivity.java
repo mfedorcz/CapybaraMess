@@ -23,7 +23,7 @@ public class MainActivity extends AppCompatActivity {
         getSupportActionBar().setDisplayShowTitleEnabled(false);
         View customView = LayoutInflater.from(this).inflate(R.layout.action_bar_main_activity, null);
         TextView titleText = customView.findViewById(R.id.actionbar_title);
-        titleText.setText("Main Activity");
+        titleText.setText("Chats");
         getSupportActionBar().setCustomView(customView);
 
 
