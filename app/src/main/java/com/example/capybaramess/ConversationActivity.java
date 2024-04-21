@@ -10,14 +10,13 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class ConversationActivity extends AppCompatActivity {
 
-    private String[] messages = {
-            "Hello! How are you?",
-            "I'm fine, thanks! And you?",
-            "I'm doing well, just been busy lately.",
-            "No problem at all, take your time!"
-    };
+    private List<ChatMessage> chatMessages = new ArrayList<>();
+    private RecyclerView messagesRecyclerView;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -28,23 +27,25 @@ public class ConversationActivity extends AppCompatActivity {
         getSupportActionBar().setDisplayShowCustomEnabled(true);
         getSupportActionBar().setDisplayShowTitleEnabled(false);
         View customView = LayoutInflater.from(this).inflate(R.layout.action_bar_act_conversation, null);
-        TextView titleText = customView.findViewById(R.id.actionbar_title);
-        titleText.setText(getIntent().getStringExtra("contactName"));  // Setting the contact's name as title
         getSupportActionBar().setCustomView(customView);
 
-        // Setup back button
-        ImageView backButton = customView.findViewById(R.id.backButton);
-        backButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                // This will close the current activity and take you back to the previous activity
-                finish();
-            }
-        });
+        TextView titleText = customView.findViewById(R.id.actionbar_title);
+        titleText.setText(getIntent().getStringExtra("contactName")); // Setting the contact's name as title
 
-        RecyclerView messagesRecyclerView = findViewById(R.id.messagesRecyclerView);
+        ImageView backButton = customView.findViewById(R.id.backButton);
+        backButton.setOnClickListener(v -> finish());
+
+        populateMessages();
+        messagesRecyclerView = findViewById(R.id.messagesRecyclerView);
         messagesRecyclerView.setLayoutManager(new LinearLayoutManager(this));
-        MessagesAdapter adapter = new MessagesAdapter(this, messages);
+        MessagesAdapter adapter = new MessagesAdapter(this, chatMessages);
         messagesRecyclerView.setAdapter(adapter);
+    }
+
+    private void populateMessages() {
+        chatMessages.add(new ChatMessage("1", "Alice", "Hello! How are you?", System.currentTimeMillis(), ChatMessage.MessageType.INCOMING));
+        chatMessages.add(new ChatMessage("2", "Bob", "I'm fine, thanks! And you?", System.currentTimeMillis(), ChatMessage.MessageType.OUTGOING));
+        chatMessages.add(new ChatMessage("3", "Alice", "I'm doing well, just been busy lately.Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore ", System.currentTimeMillis(), ChatMessage.MessageType.INCOMING));
+        chatMessages.add(new ChatMessage("4", "Bob", "No problem at all, take your time!", System.currentTimeMillis(), ChatMessage.MessageType.OUTGOING));
     }
 }

@@ -5,53 +5,58 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
-import android.widget.Toast;
 
+import androidx.constraintlayout.widget.ConstraintLayout;
+import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.RecyclerView;
 
-public class MessagesAdapter extends RecyclerView.Adapter<MessagesAdapter.ViewHolder> {
+import java.util.List;
 
-    private String[] mMessages;
-    private Context mContext;  // Context to use for interface actions
+public class MessagesAdapter extends RecyclerView.Adapter<MessagesAdapter.ViewHolder> {
+    private List<ChatMessage> mMessages;
+    private Context mContext;
 
     public static class ViewHolder extends RecyclerView.ViewHolder {
         public TextView textView;
         public ViewHolder(View v) {
             super(v);
-            textView = v.findViewById(android.R.id.text1);
+            textView = v.findViewById(R.id.message_text);
         }
     }
 
-    public MessagesAdapter(Context context, String[] messages) {
+    public MessagesAdapter(Context context, List<ChatMessage> messages) {
         mContext = context;
         mMessages = messages;
     }
 
     @Override
-    public MessagesAdapter.ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
-        View v = LayoutInflater.from(parent.getContext()).inflate(android.R.layout.simple_list_item_1, parent, false);
-        ViewHolder vh = new ViewHolder(v);
-        v.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                int position = vh.getBindingAdapterPosition();
-                if (position != RecyclerView.NO_POSITION) {
-                    // Example action: Display a Toast with the message
-                    Toast.makeText(mContext, "Clicked on: " + mMessages[position], Toast.LENGTH_SHORT).show();
-                    // You can also start new activities, open dialogs, etc.
-                }
-            }
-        });
-        return vh;
+    public ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
+        View v = LayoutInflater.from(parent.getContext()).inflate(R.layout.message_item, parent, false);
+        return new ViewHolder(v);
     }
 
     @Override
     public void onBindViewHolder(ViewHolder holder, int position) {
-        holder.textView.setText(mMessages[position]);
+        ChatMessage message = mMessages.get(position);
+        holder.textView.setText(message.getContent());
+
+        ConstraintLayout.LayoutParams params = (ConstraintLayout.LayoutParams) holder.textView.getLayoutParams();
+
+        // Set the background and text color based on message type
+        if (message.getType() == ChatMessage.MessageType.OUTGOING) {
+            holder.textView.setBackgroundResource(R.drawable.outgoing_message_bg);
+            holder.textView.setTextColor(ContextCompat.getColor(mContext, R.color.colorPrimary));  // Set text color to white for outgoing messages
+            params.horizontalBias = 1.0f; // Align to the right
+        } else {
+            holder.textView.setBackgroundResource(R.drawable.incoming_message_bg);
+            holder.textView.setTextColor(ContextCompat.getColor(mContext, R.color.colorOnSecondary));  // Optionally set a different color for incoming messages
+            params.horizontalBias = 0.0f; // Align to the left
+        }
+        holder.textView.setLayoutParams(params);  // Apply layout parameters
     }
 
     @Override
     public int getItemCount() {
-        return mMessages.length;
+        return mMessages.size();
     }
 }
