@@ -4,11 +4,16 @@ public class Contact {
     private String name;
     private String snippet;
     private int profileImage; // Resource ID of the drawable
+    private long timestamp;
 
-    public Contact(String name, String snippet, int profileImage) {
+    private int type;
+
+    public Contact(String name, String snippet, int profileImage, long timestamp, int type) {
         this.name = name;
         this.snippet = snippet;
         this.profileImage = profileImage;
+        this.timestamp = timestamp;
+        this.type = type;
     }
 
     public void setSnippet(String snippet) {
@@ -21,7 +26,15 @@ public class Contact {
         return name;
     }
 
+    public long getDate() {
+        return timestamp;
+    }
+
     public int getImageResource() {
         return profileImage;
+    }
+
+    public int getType(){
+        return type;
     }
 }

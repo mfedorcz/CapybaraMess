@@ -11,6 +11,8 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.request.RequestOptions;
 
+import java.util.List;
+
 public class ContactsAdapter extends RecyclerView.Adapter<ContactsAdapter.ViewHolder> {
 
     private Contact[] mContacts;
@@ -35,6 +37,9 @@ public class ContactsAdapter extends RecyclerView.Adapter<ContactsAdapter.ViewHo
         }
     }
 
+    public void setContacts(List<Contact> contacts) {
+        mContacts = contacts.toArray(new Contact[0]);
+    }
     public ContactsAdapter(Context context, Contact[] contacts) {
         mContext = context;
         mContacts = contacts;

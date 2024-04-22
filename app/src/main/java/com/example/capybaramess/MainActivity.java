@@ -1,7 +1,10 @@
 package com.example.capybaramess;
 
 import android.content.pm.PackageManager;
+import android.database.ContentObserver;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.provider.ContactsContract;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -19,12 +22,18 @@ import androidx.recyclerview.widget.RecyclerView;
 import android.content.Intent;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 public class MainActivity extends AppCompatActivity {
+
+    private RecyclerView contactsRecyclerView;
+    private SmsObserver smsObserver;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -40,27 +49,67 @@ public class MainActivity extends AppCompatActivity {
         }
 
         setContentView(R.layout.main_activity);
+        setupActionBar();
+        setupRecyclerView();
+    }
 
-        // Setting up the custom ActionBar
+    private void setupActionBar() {
         getSupportActionBar().setDisplayShowCustomEnabled(true);
         getSupportActionBar().setDisplayShowTitleEnabled(false);
         View customView = LayoutInflater.from(this).inflate(R.layout.action_bar_main_activity, null);
         TextView titleText = customView.findViewById(R.id.actionbar_title);
         titleText.setText("Chats");
         getSupportActionBar().setCustomView(customView);
+    }
 
-        RecyclerView contactsRecyclerView = findViewById(R.id.contactsRecyclerView);
+    private void setupRecyclerView() {
+        contactsRecyclerView = findViewById(R.id.contactsRecyclerView);
         contactsRecyclerView.setLayoutManager(new LinearLayoutManager(this));
-
-        // Use dynamic SMS data
-        ContactsAdapter adapter = new ContactsAdapter(this, getSMSConversations().toArray(new Contact[0]));  // Convert list to array
+        ContactsAdapter adapter = new ContactsAdapter(this, getSMSConversations().toArray(new Contact[0]));  // Data now comes sorted
         contactsRecyclerView.setAdapter(adapter);
-
-        // Adding an item decoration
         DividerItemDecoration dividerItemDecoration = new DividerItemDecoration(contactsRecyclerView.getContext(),
                 LinearLayoutManager.VERTICAL);
         dividerItemDecoration.setDrawable(ContextCompat.getDrawable(this, R.drawable.divider));
         contactsRecyclerView.addItemDecoration(dividerItemDecoration);
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        smsObserver = new SmsObserver(new Handler(Looper.getMainLooper()));
+        getContentResolver().registerContentObserver(Telephony.Sms.CONTENT_URI, true, smsObserver);
+        // Refresh the conversation list every time the activity resumes
+        updateConversationList();
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        if (smsObserver != null) {
+            getContentResolver().unregisterContentObserver(smsObserver);
+        }
+    }
+
+    private class SmsObserver extends ContentObserver {
+        public SmsObserver(Handler handler) {
+            super(handler);
+        }
+
+        @Override
+        public void onChange(boolean selfChange) {
+            super.onChange(selfChange);
+            // Update the list on the UI thread
+            runOnUiThread(() -> updateConversationList());
+        }
+    }
+
+    private void updateConversationList() {
+        ContactsAdapter adapter = (ContactsAdapter) contactsRecyclerView.getAdapter();
+        if (adapter != null) {
+            List<Contact> newConversations = getSMSConversations();
+            adapter.setContacts(newConversations);  // Make sure setContacts accepts List<Contact>
+            adapter.notifyDataSetChanged();
+        }
     }
 
     private boolean hasNecessaryPermissions() {
@@ -72,24 +121,31 @@ public class MainActivity extends AppCompatActivity {
 
     private Map<Long, Contact> fetchInboxConversations() {
         Map<Long, Contact> conversationMap = new HashMap<>();
-        Uri inboxUri = Telephony.Sms.Inbox.CONTENT_URI;
-        String[] inboxProjection = new String[]{
-                Telephony.Sms.Inbox.THREAD_ID,
-                Telephony.Sms.Inbox.ADDRESS
+        // This URI covers all SMS, both sent and received.
+        Uri allSmsUri = Telephony.Sms.CONTENT_URI;
+        String[] projection = new String[]{
+                Telephony.Sms.THREAD_ID,
+                Telephony.Sms.ADDRESS,
+                Telephony.Sms.DATE,
+                Telephony.Sms.TYPE
         };
 
-        try (Cursor cursor = getContentResolver().query(inboxUri, inboxProjection, null, null, null)) {
+        try (Cursor cursor = getContentResolver().query(allSmsUri, projection, null, null, Telephony.Sms.DATE + " ASC")) {
             if (cursor != null) {
-                int threadIdIdx = cursor.getColumnIndexOrThrow(Telephony.Sms.Inbox.THREAD_ID);
-                int addressIdx = cursor.getColumnIndexOrThrow(Telephony.Sms.Inbox.ADDRESS);
+                int threadIdIdx = cursor.getColumnIndexOrThrow(Telephony.Sms.THREAD_ID);
+                int addressIdx = cursor.getColumnIndexOrThrow(Telephony.Sms.ADDRESS);
+                int dateIdx = cursor.getColumnIndexOrThrow(Telephony.Sms.DATE);
+                int typeIdx = cursor.getColumnIndexOrThrow(Telephony.Sms.TYPE);
 
                 while (cursor.moveToNext()) {
                     long threadId = cursor.getLong(threadIdIdx);
                     String address = cursor.getString(addressIdx);
-                    String name = getContactName(address);  // Lookup contact name using the phone number
+                    long date = cursor.getLong(dateIdx);
+                    int type = cursor.getInt(typeIdx);
+                    String name = getContactName(address);
 
                     if (!conversationMap.containsKey(threadId)) {
-                        conversationMap.put(threadId, new Contact(name, "", 0));
+                        conversationMap.put(threadId, new Contact(name, "", 0, date, type));
                     }
                 }
             }
@@ -112,8 +168,8 @@ public class MainActivity extends AppCompatActivity {
                 while (cursor.moveToNext()) {
                     long threadId = cursor.getLong(threadIdIdx);
                     String snippet = cursor.getString(snippetIdx);
-                    if (snippet != null && snippet.length() > 40) {
-                        snippet = snippet.substring(0, 40) + "...";  // Truncate snippet to 40 characters and add ellipsis
+                    if (snippet != null) {
+                        snippet = formatSnippet(snippet, conversationMap.get(threadId).getType());
                     }
 
                     Contact contact = conversationMap.get(threadId);
@@ -125,10 +181,24 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    //adding You: TODO doesn't work as for now. Type is always 1 "Received" :c
+    private String formatSnippet(String snippet, int type) {
+        if (type == Telephony.TextBasedSmsColumns.MESSAGE_TYPE_SENT) {
+            return "You: " + snippet;
+        } else{
+            return (snippet);
+        }
+    }
+
     private List<Contact> getSMSConversations() {
         Map<Long, Contact> conversationMap = fetchInboxConversations();
         fetchAndAddSnippetsToConversations(conversationMap);
-        return new ArrayList<>(conversationMap.values());
+
+        // Convert map values to a list and sort it
+        ArrayList<Contact> sortedConversations = new ArrayList<>(conversationMap.values());
+        Collections.sort(sortedConversations, (c1, c2) -> Long.compare(c2.getDate(), c1.getDate())); // Assuming Contact has a getDate() method returning the timestamp
+
+        return sortedConversations;
     }
 
     private String getContactName(String phoneNumber) {
@@ -147,3 +217,4 @@ public class MainActivity extends AppCompatActivity {
         return contactName != null ? contactName : phoneNumber;  // Return the contact name if found, otherwise return the original number
     }
 }
+
