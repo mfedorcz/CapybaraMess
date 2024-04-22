@@ -2,9 +2,14 @@ package com.example.capybaramess;
 
 import android.content.pm.PackageManager;
 import android.os.Bundle;
+import android.provider.ContactsContract;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.TextView;
+import android.content.ContentResolver;
+import android.database.Cursor;
+import android.net.Uri;
+import android.provider.Telephony;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
@@ -13,13 +18,13 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import android.content.Intent;
 
-public class MainActivity extends AppCompatActivity {
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
 
-    Contact[] contacts = new Contact[]{
-            new Contact("Alice", R.drawable.alice_image),
-            new Contact("Bob", 0), // No image for Bob, will use default
-            new Contact("Charlie", 0)
-    };
+public class MainActivity extends AppCompatActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -46,7 +51,9 @@ public class MainActivity extends AppCompatActivity {
 
         RecyclerView contactsRecyclerView = findViewById(R.id.contactsRecyclerView);
         contactsRecyclerView.setLayoutManager(new LinearLayoutManager(this));
-        ContactsAdapter adapter = new ContactsAdapter(this, contacts);
+
+        // Use dynamic SMS data
+        ContactsAdapter adapter = new ContactsAdapter(this, getSMSConversations().toArray(new Contact[0]));  // Convert list to array
         contactsRecyclerView.setAdapter(adapter);
 
         // Adding an item decoration
@@ -61,5 +68,82 @@ public class MainActivity extends AppCompatActivity {
                 ContextCompat.checkSelfPermission(this, android.Manifest.permission.READ_SMS) == PackageManager.PERMISSION_GRANTED &&
                 ContextCompat.checkSelfPermission(this, android.Manifest.permission.RECEIVE_SMS) == PackageManager.PERMISSION_GRANTED &&
                 ContextCompat.checkSelfPermission(this, android.Manifest.permission.SEND_SMS) == PackageManager.PERMISSION_GRANTED;
+    }
+
+    private Map<Long, Contact> fetchInboxConversations() {
+        Map<Long, Contact> conversationMap = new HashMap<>();
+        Uri inboxUri = Telephony.Sms.Inbox.CONTENT_URI;
+        String[] inboxProjection = new String[]{
+                Telephony.Sms.Inbox.THREAD_ID,
+                Telephony.Sms.Inbox.ADDRESS
+        };
+
+        try (Cursor cursor = getContentResolver().query(inboxUri, inboxProjection, null, null, null)) {
+            if (cursor != null) {
+                int threadIdIdx = cursor.getColumnIndexOrThrow(Telephony.Sms.Inbox.THREAD_ID);
+                int addressIdx = cursor.getColumnIndexOrThrow(Telephony.Sms.Inbox.ADDRESS);
+
+                while (cursor.moveToNext()) {
+                    long threadId = cursor.getLong(threadIdIdx);
+                    String address = cursor.getString(addressIdx);
+                    String name = getContactName(address);  // Lookup contact name using the phone number
+
+                    if (!conversationMap.containsKey(threadId)) {
+                        conversationMap.put(threadId, new Contact(name, "", 0));
+                    }
+                }
+            }
+        }
+        return conversationMap;
+    }
+
+    private void fetchAndAddSnippetsToConversations(Map<Long, Contact> conversationMap) {
+        Uri conversationsUri = Telephony.Sms.Conversations.CONTENT_URI;
+        String[] convProjection = new String[]{
+                Telephony.Sms.Conversations.THREAD_ID,
+                Telephony.Sms.Conversations.SNIPPET
+        };
+
+        try (Cursor cursor = getContentResolver().query(conversationsUri, convProjection, null, null, null)) {
+            if (cursor != null) {
+                int threadIdIdx = cursor.getColumnIndexOrThrow(Telephony.Sms.Conversations.THREAD_ID);
+                int snippetIdx = cursor.getColumnIndexOrThrow(Telephony.Sms.Conversations.SNIPPET);
+
+                while (cursor.moveToNext()) {
+                    long threadId = cursor.getLong(threadIdIdx);
+                    String snippet = cursor.getString(snippetIdx);
+                    if (snippet != null && snippet.length() > 40) {
+                        snippet = snippet.substring(0, 40) + "...";  // Truncate snippet to 40 characters and add ellipsis
+                    }
+
+                    Contact contact = conversationMap.get(threadId);
+                    if (contact != null) {
+                        contact.setSnippet(snippet);
+                    }
+                }
+            }
+        }
+    }
+
+    private List<Contact> getSMSConversations() {
+        Map<Long, Contact> conversationMap = fetchInboxConversations();
+        fetchAndAddSnippetsToConversations(conversationMap);
+        return new ArrayList<>(conversationMap.values());
+    }
+
+    private String getContactName(String phoneNumber) {
+        Uri uri = Uri.withAppendedPath(ContactsContract.PhoneLookup.CONTENT_FILTER_URI, Uri.encode(phoneNumber));
+        String projection[] = new String[]{ContactsContract.PhoneLookup.DISPLAY_NAME};
+        String contactName = null;
+        Cursor cursor = getContentResolver().query(uri, projection, null, null, null);
+
+        if (cursor != null) {
+            if (cursor.moveToFirst()) {
+                contactName = cursor.getString(0);
+            }
+            cursor.close();
+        }
+
+        return contactName != null ? contactName : phoneNumber;  // Return the contact name if found, otherwise return the original number
     }
 }
