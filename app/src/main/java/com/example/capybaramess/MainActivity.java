@@ -6,6 +6,7 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.provider.ContactsContract;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.TextView;
@@ -121,16 +122,16 @@ public class MainActivity extends AppCompatActivity {
 
     private Map<Long, Contact> fetchInboxConversations() {
         Map<Long, Contact> conversationMap = new HashMap<>();
-        // This URI covers all SMS, both sent and received.
         Uri allSmsUri = Telephony.Sms.CONTENT_URI;
-        String[] projection = new String[]{
+        String[] projection = {
                 Telephony.Sms.THREAD_ID,
                 Telephony.Sms.ADDRESS,
                 Telephony.Sms.DATE,
-                Telephony.Sms.TYPE
+                Telephony.Sms.TYPE  // This column distinguishes between sent and received messages.
         };
 
-        try (Cursor cursor = getContentResolver().query(allSmsUri, projection, null, null, Telephony.Sms.DATE + " ASC")) {
+        // Ensure that the messages are sorted in descending order by date so that the most recent ones come first
+        try (Cursor cursor = getContentResolver().query(allSmsUri, projection, null, null, Telephony.Sms.DATE + " DESC")) {
             if (cursor != null) {
                 int threadIdIdx = cursor.getColumnIndexOrThrow(Telephony.Sms.THREAD_ID);
                 int addressIdx = cursor.getColumnIndexOrThrow(Telephony.Sms.ADDRESS);
@@ -142,13 +143,18 @@ public class MainActivity extends AppCompatActivity {
                     String address = cursor.getString(addressIdx);
                     long date = cursor.getLong(dateIdx);
                     int type = cursor.getInt(typeIdx);
-                    String name = getContactName(address);
 
-                    if (!conversationMap.containsKey(threadId)) {
-                        conversationMap.put(threadId, new Contact(name, "", 0, date, type));
+                    String name = getContactName(address);
+                    // Update the Contact entry only if it's either not yet added or the current message is newer
+                    if (!conversationMap.containsKey(threadId) || conversationMap.get(threadId).getDate() < date) {
+                        conversationMap.put(threadId, new Contact(name, address, 0, date, type));
                     }
                 }
+            } else {
+                Log.d("SMSQuery", "No SMS data found.");
             }
+        } catch (Exception e) {
+            Log.e("SMSQuery", "Error fetching SMS conversations", e);
         }
         return conversationMap;
     }
@@ -169,6 +175,7 @@ public class MainActivity extends AppCompatActivity {
                     long threadId = cursor.getLong(threadIdIdx);
                     String snippet = cursor.getString(snippetIdx);
                     if (snippet != null) {
+                        Log.d("FormatSnippet", "Before formatSnippet - Thread ID: " + threadId + ", Snippet: " + snippet + ", Type: " + conversationMap.get(threadId).getType());
                         snippet = formatSnippet(snippet, conversationMap.get(threadId).getType());
                     }
 
