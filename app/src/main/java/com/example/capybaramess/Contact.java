@@ -5,15 +5,16 @@ public class Contact {
     private String snippet;
     private int profileImage; // Resource ID of the drawable
     private long timestamp;
-
     private int type;
+    private long threadId;
 
-    public Contact(String name, String snippet, int profileImage, long timestamp, int type) {
+    public Contact(String name, String snippet, int profileImage, long timestamp, int type, long threadId) {
         this.name = name;
         this.snippet = snippet;
         this.profileImage = profileImage;
         this.timestamp = timestamp;
         this.type = type;
+        this.threadId = threadId;
     }
 
     public void setSnippet(String snippet) {
@@ -36,5 +37,13 @@ public class Contact {
 
     public int getType(){
         return type;
+    }
+
+    public void setThreadId(long threadId) {
+        this.threadId = threadId;
+    }
+
+    public long getThreadId() {
+        return threadId;
     }
 }

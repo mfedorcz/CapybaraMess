@@ -147,7 +147,7 @@ public class MainActivity extends AppCompatActivity {
                     String name = getContactName(address);
                     // Update the Contact entry only if it's either not yet added or the current message is newer
                     if (!conversationMap.containsKey(threadId) || conversationMap.get(threadId).getDate() < date) {
-                        conversationMap.put(threadId, new Contact(name, address, 0, date, type));
+                        conversationMap.put(threadId, new Contact(name, address, 0, date, type, threadId));
                     }
                 }
             } else {
