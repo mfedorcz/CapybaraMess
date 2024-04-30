@@ -7,6 +7,14 @@
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/messagesRecyclerView"
         android:layout_width="match_parent"
-        android:layout_height="match_parent" />
+        android:layout_height="match_parent"
+        android:layout_above="@+id/messageInputLayout" />
+
+    <include
+        android:id="@+id/messageInputLayout"
+        layout="@layout/message_input_sending_component"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true" />
 </RelativeLayout>
 

@@ -7,14 +7,15 @@ public class Contact {
     private long timestamp;
     private int type;
     private long threadId;
-
-    public Contact(String name, String snippet, int profileImage, long timestamp, int type, long threadId) {
+    private String address;
+    public Contact(String name, String snippet, int profileImage, long timestamp, int type, long threadId, String address) {
         this.name = name;
         this.snippet = snippet;
         this.profileImage = profileImage;
         this.timestamp = timestamp;
         this.type = type;
         this.threadId = threadId;
+        this.address = address;
     }
 
     public void setSnippet(String snippet) {
@@ -45,5 +46,9 @@ public class Contact {
 
     public long getThreadId() {
         return threadId;
+    }
+
+    public String getAddress() {
+        return address;
     }
 }

@@ -50,7 +50,7 @@ public class MessagesAdapter extends RecyclerView.Adapter<MessagesAdapter.ViewHo
             params.horizontalBias = 1.0f; // Align to the right
         } else {
             holder.textView.setBackgroundResource(R.drawable.incoming_message_bg);
-            holder.textView.setTextColor(ContextCompat.getColor(mContext, R.color.colorOnSecondary));  // Optionally set a different color for incoming messages
+            holder.textView.setTextColor(ContextCompat.getColor(mContext, R.color.colorOnSecondary));
             params.horizontalBias = 0.0f; // Align to the left
         }
         holder.textView.setLayoutParams(params);  // Apply layout parameters

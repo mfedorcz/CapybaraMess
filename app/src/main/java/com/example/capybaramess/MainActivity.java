@@ -66,7 +66,7 @@ public class MainActivity extends AppCompatActivity {
     private void setupRecyclerView() {
         contactsRecyclerView = findViewById(R.id.contactsRecyclerView);
         contactsRecyclerView.setLayoutManager(new LinearLayoutManager(this));
-        ContactsAdapter adapter = new ContactsAdapter(this, getSMSConversations().toArray(new Contact[0]));  // Data now comes sorted
+        ContactsAdapter adapter = new ContactsAdapter(this, getSMSConversations().toArray(new Contact[0]));
         contactsRecyclerView.setAdapter(adapter);
         DividerItemDecoration dividerItemDecoration = new DividerItemDecoration(contactsRecyclerView.getContext(),
                 LinearLayoutManager.VERTICAL);
@@ -108,7 +108,7 @@ public class MainActivity extends AppCompatActivity {
         ContactsAdapter adapter = (ContactsAdapter) contactsRecyclerView.getAdapter();
         if (adapter != null) {
             List<Contact> newConversations = getSMSConversations();
-            adapter.setContacts(newConversations);  // Make sure setContacts accepts List<Contact>
+            adapter.setContacts(newConversations);
             adapter.notifyDataSetChanged();
         }
     }
@@ -127,10 +127,10 @@ public class MainActivity extends AppCompatActivity {
                 Telephony.Sms.THREAD_ID,
                 Telephony.Sms.ADDRESS,
                 Telephony.Sms.DATE,
-                Telephony.Sms.TYPE  // This column distinguishes between sent and received messages.
+                Telephony.Sms.TYPE
         };
 
-        // Ensure that the messages are sorted in descending order by date so that the most recent ones come first
+        //Messages are sorted in descending order by date so that the most recent ones come first
         try (Cursor cursor = getContentResolver().query(allSmsUri, projection, null, null, Telephony.Sms.DATE + " DESC")) {
             if (cursor != null) {
                 int threadIdIdx = cursor.getColumnIndexOrThrow(Telephony.Sms.THREAD_ID);
@@ -147,7 +147,7 @@ public class MainActivity extends AppCompatActivity {
                     String name = getContactName(address);
                     // Update the Contact entry only if it's either not yet added or the current message is newer
                     if (!conversationMap.containsKey(threadId) || conversationMap.get(threadId).getDate() < date) {
-                        conversationMap.put(threadId, new Contact(name, address, 0, date, type, threadId));
+                        conversationMap.put(threadId, new Contact(name, "???", 0, date, type, threadId, address));
                     }
                 }
             } else {
@@ -188,7 +188,6 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    //adding You: TODO doesn't work as for now. Type is always 1 "Received" :c
     private String formatSnippet(String snippet, int type) {
         if (type == Telephony.TextBasedSmsColumns.MESSAGE_TYPE_SENT) {
             return "You: " + snippet;
@@ -203,7 +202,7 @@ public class MainActivity extends AppCompatActivity {
 
         // Convert map values to a list and sort it
         ArrayList<Contact> sortedConversations = new ArrayList<>(conversationMap.values());
-        Collections.sort(sortedConversations, (c1, c2) -> Long.compare(c2.getDate(), c1.getDate())); // Assuming Contact has a getDate() method returning the timestamp
+        Collections.sort(sortedConversations, (c1, c2) -> Long.compare(c2.getDate(), c1.getDate()));
 
         return sortedConversations;
     }

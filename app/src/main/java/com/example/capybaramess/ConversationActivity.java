@@ -1,16 +1,23 @@
 package com.example.capybaramess;
 
+import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
 import android.provider.Telephony;
+import android.telephony.SmsManager;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
+import android.widget.Button;
+import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.TextView;
+import android.Manifest;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -18,8 +25,12 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class ConversationActivity extends AppCompatActivity {
-
+    private static final int REQUEST_SEND_SMS = 123;
+    private EditText messageEditText;
+    private Button sendButton;
     private RecyclerView messagesRecyclerView;
+    private List<ChatMessage> chatMessages;
+    private MessagesAdapter adapter;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -43,15 +54,58 @@ public class ConversationActivity extends AppCompatActivity {
         layoutManager.setStackFromEnd(true);  // Start the layout from the bottom
         messagesRecyclerView.setLayoutManager(layoutManager);
 
+        messageEditText = findViewById(R.id.messageEditText);
+        sendButton = findViewById(R.id.sendButton);
+
+        String address = getIntent().getStringExtra("address");
+        sendButton.setOnClickListener(v -> {
+            String messageText = messageEditText.getText().toString().trim();
+            if (!messageText.isEmpty()) {
+                // Create a new ChatMessage object
+                ChatMessage newMessage = new ChatMessage(
+                        "unique_id",  // TODO generating/fetching a unique ID
+                        address,  //Address of the receiver
+                        messageText,
+                        System.currentTimeMillis(),
+                        ChatMessage.MessageType.OUTGOING
+                );
+
+                // Adding message to the list and notify the adapter
+                chatMessages.add(newMessage);
+                adapter.notifyItemInserted(chatMessages.size() - 1);
+                messagesRecyclerView.scrollToPosition(chatMessages.size() - 1);
+
+                // Clear the input field
+                messageEditText.setText("");
+
+                if (ContextCompat.checkSelfPermission(this, Manifest.permission.SEND_SMS) != PackageManager.PERMISSION_GRANTED) {
+                    ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.SEND_SMS}, REQUEST_SEND_SMS);
+                } else {
+                    sendMessage(newMessage);
+                }
+            }
+        });
+
         // Retrieving the threadId from the intent
         long threadId = getIntent().getLongExtra("threadId", -1);
         // Fetching and showing messages if a valid threadId is provided
         if (threadId != -1) {
-            List<ChatMessage> chatMessages = fetchMessages(threadId); // Fetching messages for the given threadId
-            MessagesAdapter adapter = new MessagesAdapter(this, chatMessages);
+            chatMessages = fetchMessages(threadId); // Fetching messages for the given threadId
+            adapter = new MessagesAdapter(this, chatMessages);
             messagesRecyclerView.setAdapter(adapter);
         } else {
             Log.e("ConversationActivity", "Invalid threadId passed to ConversationActivity");
+        }
+    }
+
+    private void sendMessage(ChatMessage message) {
+        SmsManager smsManager = SmsManager.getDefault();
+        try {
+            // Send a text message to the given number
+            smsManager.sendTextMessage(message.getSender(), null, message.getContent(), null, null);
+            Log.d("SMS", "SMS sent successfully.");
+        } catch (Exception e) {
+            Log.e("SMS", "SMS failed to send.", e);
         }
     }
 
