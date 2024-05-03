@@ -1,11 +1,16 @@
 package com.example.capybaramess;
 
+import android.content.BroadcastReceiver;
+import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
 import android.provider.Telephony;
 import android.telephony.SmsManager;
+import android.telephony.SmsMessage;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -31,7 +36,7 @@ public class ConversationActivity extends AppCompatActivity {
     private RecyclerView messagesRecyclerView;
     private List<ChatMessage> chatMessages;
     private MessagesAdapter adapter;
-
+    private BroadcastReceiver smsReceiver;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -71,9 +76,7 @@ public class ConversationActivity extends AppCompatActivity {
                 );
 
                 // Adding message to the list and notify the adapter
-                chatMessages.add(newMessage);
-                adapter.notifyItemInserted(chatMessages.size() - 1);
-                messagesRecyclerView.scrollToPosition(chatMessages.size() - 1);
+                updateUIWithNewMessage(newMessage);
 
                 // Clear the input field
                 messageEditText.setText("");
@@ -96,8 +99,55 @@ public class ConversationActivity extends AppCompatActivity {
         } else {
             Log.e("ConversationActivity", "Invalid threadId passed to ConversationActivity");
         }
-    }
 
+        // Initialize BroadcastReceiver
+        initializeSmsReceiver();
+        registerReceiver(smsReceiver, new IntentFilter("android.provider.Telephony.SMS_RECEIVED"));
+    }
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        unregisterReceiver(smsReceiver);
+    }
+    private void initializeSmsReceiver() {
+        smsReceiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                if (Telephony.Sms.Intents.SMS_RECEIVED_ACTION.equals(intent.getAction())) {
+                    Bundle bundle = intent.getExtras();
+                    if (bundle != null) {
+                        Object[] pdus = (Object[]) bundle.get("pdus");
+                        String format = bundle.getString("format"); // Get the SMS message format
+
+                        if (pdus != null) {
+                            for (Object pdu : pdus) {
+                                SmsMessage smsMessage;
+                                smsMessage = SmsMessage.createFromPdu((byte[]) pdu, format);
+                                String sender = smsMessage.getDisplayOriginatingAddress();
+                                String messageBody = smsMessage.getMessageBody();
+                                long timestamp = smsMessage.getTimestampMillis();
+
+                                // Check if the message is from the same thread
+                                if (sender.equals(getIntent().getStringExtra("address"))) {
+                                    ChatMessage newMessage = new ChatMessage(
+                                            "unique_id", sender, messageBody, timestamp, ChatMessage.MessageType.INCOMING
+                                    );
+                                    updateUIWithNewMessage(newMessage);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        };
+    }
+    private void updateUIWithNewMessage(ChatMessage message) {
+        runOnUiThread(() -> {
+            chatMessages.add(message);
+            adapter.notifyItemInserted(chatMessages.size() - 1);
+            messagesRecyclerView.scrollToPosition(chatMessages.size() - 1);
+        });
+    }
     private void sendMessage(ChatMessage message) {
         SmsManager smsManager = SmsManager.getDefault();
         try {
