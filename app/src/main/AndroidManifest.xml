@@ -32,5 +32,8 @@ package="com.example.capybaramess">  <!-- Make sure to replace with your actual 
 
     <activity android:name=".ConversationActivity" />
     <activity android:name=".PermissionRequestActivity" />
+    <activity android:name=".RegistrationActivity"/>
+    <activity android:name=".SetPasswordActivity"/>
+    <activity android:name=".CodeVerificationActivity"/>
 </application>
 </manifest>

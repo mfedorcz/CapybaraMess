@@ -22,4 +22,11 @@
     <style name="MyActionBar.TitleTextStyle" parent="TextAppearance.MaterialComponents.Headline6">
         <item name="android:textColor">@color/colorOnPrimary</item>
     </style>
+
+    <!-- Custom Text Appearance for semi-bold and size 24sp -->
+    <style name="TextAppearance.LogoFont" parent="TextAppearance.AppCompat">
+        <item name="android:textSize">24sp</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:fontFamily">normal</item>
+    </style>
 </resources>

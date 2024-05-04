@@ -1,5 +1,6 @@
 plugins {
     alias(libs.plugins.androidApplication)
+    id("com.google.gms.google-services")
 }
 
 android {
@@ -39,7 +40,13 @@ dependencies {
     implementation(libs.constraintLayout)
     implementation(libs.androidXCoreKtx)
     implementation(libs.glide)
+    implementation(libs.firebase.messaging)
+    implementation(libs.firebase.auth)
+
+
     testImplementation(libs.junit)
     androidTestImplementation(libs.ext.junit)
     androidTestImplementation(libs.espresso.core)
+    testImplementation(libs.mockito.core)
+    androidTestImplementation(libs.mockito.android)
 }

@@ -22,6 +22,8 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import android.content.Intent;
 
+import com.google.firebase.auth.FirebaseAuth;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -46,6 +48,15 @@ public class MainActivity extends AppCompatActivity {
             Intent intent = new Intent(this, PermissionRequestActivity.class);
             startActivity(intent);
             finish();  // Close MainActivity to prevent the user from using the app without permissions
+            return;  // Stop further execution of this method
+        }
+
+        // Check if the user is signed in
+        if (FirebaseAuth.getInstance().getCurrentUser() == null) {
+            // No user is signed in; start the RegistrationActivity or LoginActivity
+            Intent intent = new Intent(this, RegistrationActivity.class);  // Assume RegistrationActivity is your login screen
+            startActivity(intent);
+            finish();  // Optionally finish MainActivity if you don't want users to go back here without logging in
             return;  // Stop further execution of this method
         }
 
