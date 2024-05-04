@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:padding="30dp"
+    tools:context=".RegistrationActivity"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <include
+        layout="@layout/logo"
+        android:id="@+id/logo"/>
+
+    <TextView
+        android:id="@+id/TextHeader"
+        android:layout_below="@id/logo"
+        android:layout_centerHorizontal="true"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="-2dp"
+        android:text="Permissions needed"
+        android:textSize="20sp"
+        android:textColor="@color/colorOnPrimary"
+        android:textStyle="bold"/>
+
+    <TextView
+        android:id="@+id/TextBody"
+        android:layout_below="@+id/TextHeader"
+        android:text="This app requires permissions to access your SMS and Contacts to function properly."
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_centerHorizontal="true"
+        android:textSize="16sp"
+        android:textAlignment="center"
+        android:textColor="@color/colorOnPrimary"/>
+
+    <Space
+        android:id="@+id/Space1"
+        android:layout_below="@+id/TextBody"
+        android:layout_width="match_parent"
+        android:layout_height="20dp" />
+
+    <androidx.appcompat.widget.AppCompatButton
+        android:id="@+id/btn_request_permissions"
+        android:layout_below="@+id/Space1"
+        android:layout_width="wrap_content"
+        android:layout_centerInParent="true"
+        android:layout_height="wrap_content"
+        android:text="Request Permissions"
+        android:textColor="@color/colorSecondary"
+        android:padding="15dp"
+        android:textAllCaps="true"
+        android:textSize="15dp"
+        android:background="@drawable/button1_background"/>
+
+</RelativeLayout>

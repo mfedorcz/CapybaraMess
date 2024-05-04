@@ -5,10 +5,8 @@
         <item name="android:padding">0dp</item>
         <item name="android:layout_margin">0dp</item>
 
-        <!-- Status bar color. -->
         <item name="android:statusBarColor">@color/colorOnPrimary</item>
 
-        <!-- ActionBar customization -->
         <item name="actionBarStyle">@style/MyActionBar</item>
     </style>
 
@@ -28,5 +26,15 @@
         <item name="android:textSize">24sp</item>
         <item name="android:textStyle">bold</item>
         <item name="android:fontFamily">normal</item>
+    </style>
+
+    <style name="CodeBox">
+        <item name="android:layout_width">40dp</item>
+        <item name="android:layout_height">50dp</item>
+        <item name="android:background">@drawable/edit_text_box_background</item>
+        <item name="android:inputType">number</item>
+        <item name="android:maxLength">1</item>
+        <item name="android:gravity">center</item>
+        <item name="android:textSize">24sp</item>
     </style>
 </resources>

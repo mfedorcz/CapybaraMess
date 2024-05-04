@@ -1,45 +1,132 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
-    android:padding="16dp"
-    android:gravity="center"
+    android:padding="30dp"
     tools:context=".RegistrationActivity">
 
+
+    <include
+        layout="@layout/logo"
+        android:id="@+id/logo"/>
+
     <TextView
+        android:id="@+id/Header"
+        android:layout_below="@+id/logo"
+        android:layout_centerHorizontal="true"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Capybara Messenger"
-        android:textAppearance="?android:attr/textAppearanceLarge"
-        android:textStyle="bold"
-        android:paddingBottom="20dp"/>
+        android:layout_marginTop="-2dp"
+        android:text="We send you an SMS with a code"
+        android:textSize="20sp"
+        android:textColor="@color/colorOnPrimary"
+        android:textStyle="bold"/>
 
-    <ImageView
-        android:id="@+id/imageView3"
-        android:layout_width="150dp"
-        android:layout_height="150dp"
-        android:src="@mipmap/app_icon"
-        android:paddingBottom="30dp"/>
-
-    <EditText
-        android:id="@+id/codeInput"
-        android:layout_width="match_parent"
+    <TextView
+        android:id="@+id/BodyText"
+        android:layout_below="@+id/Header"
+        android:text="Please enter it below"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:hint="Enter verification code"
-        android:inputType="number"
-        android:maxLength="6"
+        android:layout_centerHorizontal="true"
+        android:textSize="16sp"
+        android:textColor="@color/colorOnPrimary"/>
+
+    <Space
+        android:id="@+id/Space1"
+        android:layout_below="@+id/BodyText"
+        android:layout_width="match_parent"
+        android:layout_height="20dp" />
+
+    <LinearLayout
+        android:id="@+id/InputFields"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center"
         android:layout_centerInParent="true"
-        android:padding="16dp" />
+        android:layout_below="@id/Space1">
 
-    <Button
-        android:id="@+id/buttonVerifyCode"
+        <EditText
+            android:id="@+id/editTextCode1"
+            style="@style/CodeBox"/>
+
+        <Space
+            android:layout_width="10dp"
+            android:layout_height="match_parent"/>
+
+        <EditText
+            android:id="@+id/editTextCode2"
+            style="@style/CodeBox"/>
+
+        <Space
+            android:layout_width="10dp"
+            android:layout_height="match_parent"/>
+
+        <EditText
+            android:id="@+id/editTextCode3"
+            style="@style/CodeBox"/>
+
+        <Space
+            android:layout_width="10dp"
+            android:layout_height="match_parent"/>
+
+        <EditText
+            android:id="@+id/editTextCode4"
+            style="@style/CodeBox"/>
+
+        <Space
+            android:layout_width="10dp"
+            android:layout_height="match_parent"/>
+
+        <EditText
+            android:id="@+id/editTextCode5"
+            style="@style/CodeBox"/>
+
+        <Space
+            android:layout_width="10dp"
+            android:layout_height="match_parent"/>
+
+        <EditText
+            android:id="@+id/editTextCode6"
+            style="@style/CodeBox" />
+    </LinearLayout>
+
+    <Space
+        android:id="@+id/Space2"
+        android:layout_below="@+id/InputFields"
+        android:layout_width="match_parent"
+        android:layout_height="20dp" />
+
+    <TextView
+        android:id="@+id/text2"
+        android:layout_below="@id/Space2"
+        android:layout_centerInParent="true"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Didn’t get SMS? It may take up to few minutes"
+        android:paddingStart="8dp"
+        android:paddingEnd="8dp"
+        android:textSize="15sp"
+        android:textColor="#828282" />
+
+    <Space
+        android:id="@+id/Space3"
+        android:layout_below="@+id/text2"
+        android:layout_width="match_parent"
+        android:layout_height="20dp" />
+
+    <androidx.appcompat.widget.AppCompatButton
+        android:id="@+id/buttonSignIn"
+        android:layout_below="@id/Space3"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Verify Code"
-        android:layout_below="@id/codeInput"
-        android:layout_marginTop="24dp"
-        android:padding="12dp" />
-</LinearLayout>
+        android:text="Send again"
+        android:textColor="#828282"
+        android:textAllCaps="false"
+        android:textSize="16sp"
+        android:background="@drawable/button2_background"
+        android:layout_marginTop="12dp"/>
+
+</RelativeLayout>

@@ -79,7 +79,7 @@ public class RegistrationActivity extends AppCompatActivity {
         mAuth = FirebaseAuth.getInstance();
 
         editTextPhoneNumber = findViewById(R.id.phoneNumberInput);
-        buttonVerifyPhone = findViewById(R.id.buttonSignIn);
+        buttonVerifyPhone = findViewById(R.id.buttonSignUp);
 
         buttonVerifyPhone.setOnClickListener(v -> {
             String phone = editTextPhoneNumber.getText().toString().trim();

@@ -19,7 +19,7 @@ public class PermissionRequestActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_permission_request);
+        setContentView(R.layout.permission_request_activity);
 
         findViewById(R.id.btn_request_permissions).setOnClickListener(new View.OnClickListener() {
             @Override
