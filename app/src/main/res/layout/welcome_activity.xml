@@ -1,0 +1,130 @@
+<ScrollView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/welcomeLayout"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fillViewport="true"
+    tools:context=".WelcomeActivity">
+
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:padding="30dp">
+
+        <include
+            layout="@layout/logo"
+            android:id="@+id/logo"/>
+
+        <TextView
+            android:id="@+id/Header"
+            android:layout_below="@+id/logo"
+            android:layout_centerHorizontal="true"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="-2dp"
+            android:text="Help us get to know you better"
+            android:textSize="20sp"
+            android:textColor="@color/colorOnPrimary"
+            android:textStyle="bold"
+            android:imeOptions="actionDone"/>
+
+        <Space
+            android:id="@+id/Space1"
+            android:layout_below="@+id/Header"
+            android:layout_width="match_parent"
+            android:layout_height="20dp" />
+
+        <EditText
+            android:id="@+id/usernameField"
+            android:layout_below="@id/Space1"
+            android:layout_width="match_parent"
+            android:layout_height="43dp"
+            android:background="@drawable/input_field_background"
+            android:paddingStart="20dp"
+            android:paddingEnd="10dp"
+            android:ems="10"
+            android:maxLength="20"
+            android:hint="Username*"
+            android:textSize="16sp"
+            android:inputType="text"
+            android:imeOptions="actionDone"/>
+
+        <Space
+            android:id="@+id/Space2"
+            android:layout_below="@+id/usernameField"
+            android:layout_width="match_parent"
+            android:layout_height="10dp" />
+
+        <EditText
+            android:id="@+id/realNameField"
+            android:layout_below="@id/Space2"
+            android:layout_width="match_parent"
+            android:layout_height="43dp"
+            android:background="@drawable/input_field_background"
+            android:paddingStart="20dp"
+            android:ems="10"
+            android:maxLength="50"
+            android:hint="Real name"
+            android:textSize="16sp"
+            android:inputType="textPersonName"
+            android:imeOptions="actionDone"/>
+
+        <Space
+            android:id="@+id/Space3"
+            android:layout_below="@+id/realNameField"
+            android:layout_width="match_parent"
+            android:layout_height="10dp" />
+
+        <EditText
+            android:id="@+id/emailField"
+            android:layout_below="@id/Space3"
+            android:layout_width="match_parent"
+            android:layout_height="43dp"
+            android:background="@drawable/input_field_background"
+            android:paddingStart="20dp"
+            android:ems="10"
+            android:maxLength="254"
+            android:hint="E-mail address"
+            android:textSize="16sp"
+            android:inputType="textEmailAddress"
+            android:imeOptions="actionDone"/>
+
+        <Space
+            android:id="@+id/Space4"
+            android:layout_below="@+id/emailField"
+            android:layout_width="match_parent"
+            android:layout_height="10dp" />
+
+        <EditText
+            android:id="@+id/bio"
+            android:layout_below="@id/Space4"
+            android:layout_width="match_parent"
+            android:layout_height="150dp"
+            android:background="@drawable/input_field_background"
+            android:padding="16dp"
+            android:gravity="start|top"
+            android:hint="Bio"
+            android:textSize="16sp"
+            android:maxLength="300"
+            android:inputType="textMultiLine"
+            android:scrollbars="vertical" />
+
+        <Space
+            android:id="@+id/Space5"
+            android:layout_below="@+id/bio"
+            android:layout_width="match_parent"
+            android:layout_height="10dp" />
+
+        <androidx.appcompat.widget.AppCompatButton
+            android:id="@+id/continueButton"
+            android:layout_below="@id/Space5"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Continue"
+            android:textColor="@color/colorSecondary"
+            android:textAllCaps="false"
+            android:textSize="16sp"
+            android:background="@drawable/button1_background"/>
+    </RelativeLayout>
+</ScrollView>

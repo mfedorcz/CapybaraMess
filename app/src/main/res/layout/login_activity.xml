@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
-xmlns:tools="http://schemas.android.com/tools"
-android:layout_width="match_parent"
-android:layout_height="match_parent"
-android:padding="30dp"
-tools:context=".RegistrationActivity">
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:padding="30dp"
+    tools:context=".LoginActivity">
 
 
     <include
@@ -18,7 +18,7 @@ tools:context=".RegistrationActivity">
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="-2dp"
-        android:text="Create an account"
+        android:text="Log in to your account"
         android:textSize="20sp"
         android:textColor="@color/colorOnPrimary"
         android:textStyle="bold"/>
@@ -26,7 +26,7 @@ tools:context=".RegistrationActivity">
     <TextView
         android:id="@+id/Enter_your_number_to_sign_up_for_this_app"
         android:layout_below="@+id/Create_an_account"
-        android:text="Enter your number to sign up for this app"
+        android:text="Enter your credentials to sign in to the app"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_centerHorizontal="true"
@@ -42,14 +42,14 @@ tools:context=".RegistrationActivity">
     <EditText
         android:id="@+id/phoneNumberInput"
         android:layout_below="@id/Space1"
-        android:layout_width="match_parent"
+        android:layout_width="383dp"
         android:layout_height="43dp"
+        android:paddingEnd="10dp"
         android:background="@drawable/input_field_background"
         android:paddingStart="20dp"
         android:ems="10"
-        android:hint="+48 888 888 888"
+        android:hint="+1 (555) 555-5555"
         android:textSize="16sp"
-        android:paddingEnd="10dp"
         android:inputType="phone" />
 
     <Space
@@ -58,20 +58,39 @@ tools:context=".RegistrationActivity">
         android:layout_width="match_parent"
         android:layout_height="10dp" />
 
-    <androidx.appcompat.widget.AppCompatButton
-        android:id="@+id/buttonSignUp"
+    <EditText
+        android:id="@+id/passwordInput"
         android:layout_below="@id/Space2"
+        android:layout_width="383dp"
+        android:layout_height="43dp"
+        android:background="@drawable/input_field_background"
+        android:paddingStart="20dp"
+        android:ems="10"
+        android:hint="password"
+        android:textSize="16sp"
+        android:inputType="textPassword" />
+
+    <Space
+        android:id="@+id/Space3"
+        android:layout_below="@+id/passwordInput"
+        android:layout_width="match_parent"
+        android:layout_height="10dp" />
+
+    <androidx.appcompat.widget.AppCompatButton
+        android:id="@+id/buttonSignIn"
+        android:layout_below="@id/Space3"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Sign up with number"
+        android:text="Sign in"
         android:textColor="@color/colorSecondary"
         android:textAllCaps="false"
         android:textSize="16sp"
         android:background="@drawable/button1_background"/>
 
+
     <LinearLayout
-        android:id="@+id/Already_have_an_account"
-        android:layout_below="@id/buttonSignUp"
+        android:id="@+id/or"
+        android:layout_below="@id/buttonSignIn"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
@@ -87,7 +106,7 @@ tools:context=".RegistrationActivity">
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Already have an account?"
+            android:text="or"
             android:paddingStart="8dp"
             android:paddingEnd="8dp"
             android:textSize="14sp"
@@ -99,33 +118,53 @@ tools:context=".RegistrationActivity">
             android:layout_weight="1"
             android:background="@color/colorSecondaryElement" />
     </LinearLayout>
-
-    <androidx.appcompat.widget.AppCompatButton
-        android:id="@+id/buttonSignIn"
-        android:layout_below="@id/Already_have_an_account"
+    <LinearLayout
+        android:id="@+id/lowerButtons"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Sign in to your account"
-        android:textColor="#828282"
-        android:textAllCaps="false"
-        android:textSize="16sp"
-        android:background="@drawable/button2_background"
-        android:layout_marginTop="12dp"/>
+        android:layout_below="@+id/or"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:padding="10dp">
+        <androidx.appcompat.widget.AppCompatButton
+            android:id="@+id/Sign_up"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="wrap_content"
+            android:text="Sign up"
+            android:textColor="#828282"
+            android:textAllCaps="false"
+            android:textSize="16sp"
+            android:background="@drawable/button2_background"/>
 
-    <Space
-        android:id="@+id/Space3"
-        android:layout_below="@+id/buttonSignIn"
-        android:layout_width="match_parent"
-        android:layout_height="10dp" />
+        <Space
+            android:layout_width="15dp"
+
+            android:layout_height="10dp" />
+
+        <androidx.appcompat.widget.AppCompatButton
+            android:id="@+id/onlySMS"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="wrap_content"
+            android:text="Use only for SMS"
+            android:textColor="#828282"
+            android:textAllCaps="false"
+            android:textSize="16sp"
+            android:background="@drawable/button2_background"/>
+
+    </LinearLayout>
+
+
+
 
     <TextView
         android:id="@+id/textViewTerms"
-        android:layout_below="@id/Space3"
+        android:layout_below="@id/lowerButtons"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="By clicking Sign up, you agree to our Terms of Service and Privacy Policy"
+        android:text="By clicking Sign in, you agree to our Terms of Service and Privacy Policy"
         android:layout_centerInParent="true"
         android:textAlignment="center"/>
 
 </RelativeLayout>
-

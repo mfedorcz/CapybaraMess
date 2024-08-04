@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="?attr/actionBarSize"
     android:background="@color/colorPrimary">
@@ -12,4 +13,27 @@
         android:text="@string/app_name"
         android:textAppearance="@style/TextAppearance.AppCompat.Widget.ActionBar.Title"
         android:textColor="@color/colorOnPrimary" />
+
+    <ImageView
+        android:id="@+id/actionbar_settings"
+        android:layout_width="50dp"
+        android:layout_height="wrap_content"
+        android:contentDescription="@string/settings"
+        android:src="@drawable/ic_settings"
+        android:layout_alignParentEnd="true"
+        android:padding="10dp"
+        android:visibility="invisible"
+        app:tint="@color/colorOnPrimary" />
+
+    <ImageView
+        android:id="@+id/backButton"
+        android:layout_width="wrap_content"
+        android:layout_height="match_parent"
+        android:paddingStart="0dp"
+        android:paddingEnd="8dp"
+        android:src="@drawable/ic_back"
+        android:contentDescription="@string/back_button_description"
+        android:visibility="invisible"
+        android:layout_alignParentStart="true"/>
+
 </RelativeLayout>

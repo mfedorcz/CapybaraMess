@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
 xmlns:tools="http://schemas.android.com/tools"
-package="com.example.capybaramess">  <!-- Make sure to replace with your actual package name -->
+package="com.example.capybaramess">
 
     <uses-feature
         android:name="android.hardware.telephony"
@@ -10,6 +10,9 @@ package="com.example.capybaramess">  <!-- Make sure to replace with your actual 
     <uses-permission android:name="android.permission.READ_SMS"/>
     <uses-permission android:name="android.permission.RECEIVE_SMS"/>
     <uses-permission android:name="android.permission.SEND_SMS"/>
+    <uses-permission android:name="android.permission.INTERNET"/>
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
 
 <application
     android:allowBackup="true"
@@ -35,5 +38,8 @@ package="com.example.capybaramess">  <!-- Make sure to replace with your actual 
     <activity android:name=".RegistrationActivity"/>
     <activity android:name=".SetPasswordActivity"/>
     <activity android:name=".CodeVerificationActivity"/>
+    <activity android:name=".SettingsActivity"/>
+    <activity android:name=".LoginActivity"/>
+    <activity android:name=".WelcomeActivity"/>
 </application>
 </manifest>

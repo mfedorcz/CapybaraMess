@@ -1,6 +1,7 @@
 {
   "project_info": {
     "project_number": "201680060831",
+    "firebase_url": "https://capybaramess-default-rtdb.europe-west1.firebasedatabase.app",
     "project_id": "capybaramess",
     "storage_bucket": "capybaramess.appspot.com"
   },
@@ -12,7 +13,16 @@
           "package_name": "com.example.capybaramess"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "201680060831-0ji6c8fcjqaui0fg4ubup99ocs6nfemi.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.capybaramess",
+            "certificate_hash": "f20c804b8b3536d27529f570eb1ffd93698dc13c"
+          }
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyANjxRvBR_M991JZ05NKmec0OxMhYyN61U"

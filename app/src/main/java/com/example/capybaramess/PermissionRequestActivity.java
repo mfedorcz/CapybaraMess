@@ -72,7 +72,7 @@ public class PermissionRequestActivity extends AppCompatActivity {
             for (int i = 0; i < permissions.length; i++) {
                 if (grantResults[i] != PackageManager.PERMISSION_GRANTED) {
                     allPermissionsGranted = false;
-                    // Check if we should show a rationale for the denied permission
+                    // Check if should show a rationale for the denied permission
                     if (ActivityCompat.shouldShowRequestPermissionRationale(this, permissions[i])) {
                         shouldShowRationale = true;
                     }
@@ -81,9 +81,9 @@ public class PermissionRequestActivity extends AppCompatActivity {
 
             if (allPermissionsGranted) {
                 // All permissions have been granted
-                startMainActivity();  // Or whatever method you use to proceed in your app
+                startMainActivity();  // Or whatever method you use to proceed in app
             } else if (shouldShowRationale) {
-                // At least one permission was denied and we should show a rationale
+                // At least one permission was denied and should show a rationale
                 Toast.makeText(this, "Permissions needed to run the app properly. Please allow them.", Toast.LENGTH_LONG).show();
             } else {
                 // At least one permission was denied and the user selected "Don't ask again"

@@ -9,6 +9,7 @@ import android.provider.ContactsContract;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
+import android.widget.ImageView;
 import android.widget.TextView;
 import android.content.ContentResolver;
 import android.database.Cursor;
@@ -22,6 +23,7 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import android.content.Intent;
 
+import com.google.firebase.FirebaseApp;
 import com.google.firebase.auth.FirebaseAuth;
 
 import java.util.ArrayList;
@@ -37,10 +39,13 @@ public class MainActivity extends AppCompatActivity {
 
     private RecyclerView contactsRecyclerView;
     private SmsObserver smsObserver;
-
+    private ImageView settingsIcon;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        // Initialize Firebase
+        FirebaseApp.initializeApp(this);
 
         // Check permissions at the start
         if (!hasNecessaryPermissions()) {
@@ -48,16 +53,16 @@ public class MainActivity extends AppCompatActivity {
             Intent intent = new Intent(this, PermissionRequestActivity.class);
             startActivity(intent);
             finish();  // Close MainActivity to prevent the user from using the app without permissions
-            return;  // Stop further execution of this method
+            return;
         }
 
         // Check if the user is signed in
         if (FirebaseAuth.getInstance().getCurrentUser() == null) {
             // No user is signed in; start the RegistrationActivity or LoginActivity
-            Intent intent = new Intent(this, RegistrationActivity.class);  // Assume RegistrationActivity is your login screen
+            Intent intent = new Intent(this, RegistrationActivity.class);  // RegistrationActivity is login screen
             startActivity(intent);
-            finish();  // Optionally finish MainActivity if you don't want users to go back here without logging in
-            return;  // Stop further execution of this method
+            finish();  // finish MainActivity
+            return;
         }
 
         setContentView(R.layout.main_activity);
@@ -72,6 +77,12 @@ public class MainActivity extends AppCompatActivity {
         TextView titleText = customView.findViewById(R.id.actionbar_title);
         titleText.setText("Chats");
         getSupportActionBar().setCustomView(customView);
+        settingsIcon = findViewById(R.id.actionbar_settings);
+        settingsIcon.setVisibility(View.VISIBLE);
+        settingsIcon.setOnClickListener(v -> {
+            Intent intent = new Intent(MainActivity.this, SettingsActivity.class);
+            startActivity(intent);
+        });
     }
 
     private void setupRecyclerView() {

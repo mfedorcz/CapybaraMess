@@ -72,7 +72,8 @@ public class CodeVerificationActivity extends AppCompatActivity {
         mAuth.signInWithCredential(credential)
                 .addOnCompleteListener(this, task -> {
                     if (task.isSuccessful()) {
-                        startActivity(new Intent(CodeVerificationActivity.this, SetPasswordActivity.class));
+                        Intent intent = new Intent(CodeVerificationActivity.this, SetPasswordActivity.class);
+                        startActivity(intent);
                     } else {
                         Toast.makeText(CodeVerificationActivity.this, "Verification failed.", Toast.LENGTH_SHORT).show();
                     }
