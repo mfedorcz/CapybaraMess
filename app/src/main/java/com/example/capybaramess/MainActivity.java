@@ -24,12 +24,13 @@ import android.content.Intent;
 
 import com.google.firebase.FirebaseApp;
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.firestore.DocumentSnapshot;
+import com.google.firebase.firestore.FirebaseFirestore;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
-import java.util.Collections;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
@@ -40,6 +41,7 @@ public class MainActivity extends AppCompatActivity {
     private SmsObserver smsObserver;
     private ImageView settingsIcon;
     private ExecutorService executorService;
+    private FirebaseFirestore firestore;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -47,6 +49,7 @@ public class MainActivity extends AppCompatActivity {
 
         // Initialize Firebase
         FirebaseApp.initializeApp(this);
+        firestore = FirebaseFirestore.getInstance();
 
         // Initialize ExecutorService
         executorService = Executors.newSingleThreadExecutor();
@@ -117,7 +120,7 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        executorService.shutdown(); // Shut down the executor service when activity is destroyed
+        executorService.shutdown(); //Shut down the executor service when activity is destroyed
     }
 
     private class SmsObserver extends ContentObserver {
@@ -169,6 +172,7 @@ public class MainActivity extends AppCompatActivity {
                 int dateIdx = cursor.getColumnIndexOrThrow(Telephony.Sms.DATE);
                 int typeIdx = cursor.getColumnIndexOrThrow(Telephony.Sms.TYPE);
 
+                int position = 0;
                 while (cursor.moveToNext()) {
                     long threadId = cursor.getLong(threadIdIdx);
                     String address = cursor.getString(addressIdx);
@@ -177,9 +181,14 @@ public class MainActivity extends AppCompatActivity {
 
                     String name = getContactName(address);
 
-                    if (!conversationMap.containsKey(threadId) || conversationMap.get(threadId).getDate() < date) {
-                        conversationMap.put(threadId, new Contact(name, "???", 0, date, type, threadId, address));
-                    }
+                    Contact contact = new Contact(name, "???", null, date, type, threadId, address);
+
+                    conversationMap.put(threadId, contact);
+
+                    // Check Firestore for user details based on phone number
+                    checkFirestoreForUserDetails(contact, position);
+
+                    position++;
                 }
             }
         } catch (Exception e) {
@@ -187,6 +196,40 @@ public class MainActivity extends AppCompatActivity {
         }
         return conversationMap;
     }
+
+
+    private void checkFirestoreForUserDetails(Contact contact, int position) {
+        executorService.execute(() -> {
+            firestore.collection("users")
+                    .whereEqualTo("phoneNumber", contact.getAddress())
+                    .get()
+                    .addOnCompleteListener(task -> {
+                        if (task.isSuccessful() && task.getResult() != null && !task.getResult().isEmpty()) {
+                            DocumentSnapshot document = task.getResult().getDocuments().get(0);
+                            String username = document.getString("username");
+                            String profileImageUrl = document.getString("profileImageUrl");
+
+                            if (username != null) {
+                                contact.setName(username); // Update name to username
+                            }
+
+                            if (profileImageUrl != null) {
+                                contact.setProfileImage(profileImageUrl); // Set profile image URL
+                            }
+
+                            // Update the UI with the new contact details on the main thread
+                            runOnUiThread(() -> {
+                                ContactsAdapter adapter = (ContactsAdapter) contactsRecyclerView.getAdapter();
+                                if (adapter != null) {
+                                    adapter.notifyItemChanged(position); // Notify adapter to refresh just this item
+                                }
+                            });
+                        }
+                    });
+        });
+    }
+
+
 
     private void fetchAndAddSnippetsToConversations(Map<Long, Contact> conversationMap) {
         Uri conversationsUri = Telephony.Sms.Conversations.CONTENT_URI;

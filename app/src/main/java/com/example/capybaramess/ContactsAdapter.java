@@ -2,6 +2,7 @@ package com.example.capybaramess;
 
 import android.content.Context;
 import android.content.Intent;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -74,18 +75,24 @@ public class ContactsAdapter extends RecyclerView.Adapter<ContactsAdapter.ViewHo
                 .placeholder(defaultImages[position % defaultImages.length])
                 .error(defaultImages[position % defaultImages.length]);
 
-        if (contact.getImageResource() != 0) {
+        // Check if the contact has a profile image URL
+        if (contact.getProfileImage() != null && !contact.getProfileImage().isEmpty()) {
+            // Load the profile image from the URL
+            //Log.d("GlideLoading", "Loading image for " + contact.getName() + " from URL: " + contact.getProfileImage());
             Glide.with(mContext)
-                    .load(contact.getImageResource())
+                    .load(contact.getProfileImage())
                     .apply(options)
                     .into(holder.imageView);
         } else {
+            // Load a default image
             Glide.with(mContext)
                     .load(defaultImages[position % defaultImages.length])
                     .apply(options)
                     .into(holder.imageView);
         }
     }
+
+
 
     @Override
     public int getItemCount() {
