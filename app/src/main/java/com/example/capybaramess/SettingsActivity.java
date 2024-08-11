@@ -33,17 +33,16 @@ import com.bumptech.glide.request.RequestOptions;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.auth.UserProfileChangeRequest;
+import com.google.firebase.firestore.DocumentReference;
+import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.storage.FirebaseStorage;
-import com.google.firebase.storage.StorageException;
 import com.google.firebase.storage.StorageReference;
 import com.google.firebase.storage.UploadTask;
 
-import org.json.JSONException;
-import org.json.JSONObject;
-
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
+import java.util.Map;
 
 public class SettingsActivity extends AppCompatActivity {
 
@@ -54,6 +53,7 @@ public class SettingsActivity extends AppCompatActivity {
     private FirebaseStorage storage;
     private StorageReference storageReference;
     private FirebaseAuth mAuth;
+    private FirebaseFirestore firestore;
     private int nameCharLimit = 20;
     private int usernameCharLimit = 20;
     private int emailCharLimit = 40;
@@ -94,6 +94,7 @@ public class SettingsActivity extends AppCompatActivity {
         storage = FirebaseStorage.getInstance();
         storageReference = storage.getReference();
         mAuth = FirebaseAuth.getInstance();
+        firestore = FirebaseFirestore.getInstance();
 
         setupActionBar();
 
@@ -178,7 +179,7 @@ public class SettingsActivity extends AppCompatActivity {
 
                     uploadTask.addOnSuccessListener(taskSnapshot -> fileReference.getDownloadUrl().addOnSuccessListener(uri -> {
                         String downloadUrl = uri.toString();
-                        // Update user profile with downloadUrl
+                        // Update Firestore with downloadUrl
                         updateUserProfileImage(downloadUrl);
                     })).addOnFailureListener(e -> Toast.makeText(SettingsActivity.this, "Upload failed: " + e.getMessage(), Toast.LENGTH_SHORT).show());
                 } else {
@@ -195,15 +196,27 @@ public class SettingsActivity extends AppCompatActivity {
     private void updateUserProfileImage(String imageUrl) {
         FirebaseUser user = mAuth.getCurrentUser();
         if (user != null) {
+            // Update Firestore with the new profile image URL
+            DocumentReference userRef = firestore.collection("users").document(user.getUid());
+            userRef.update("profileImageUrl", imageUrl)
+                    .addOnCompleteListener(task -> {
+                        if (task.isSuccessful()) {
+                            Toast.makeText(SettingsActivity.this, "Profile image updated", Toast.LENGTH_SHORT).show();
+                            loadProfileImage();
+                        } else {
+                            Toast.makeText(SettingsActivity.this, "Failed to update profile image", Toast.LENGTH_SHORT).show();
+                        }
+                    });
+
+            // Optionally, update Firebase Authentication profile if needed
             UserProfileChangeRequest profileUpdates = new UserProfileChangeRequest.Builder()
                     .setPhotoUri(Uri.parse(imageUrl))
                     .build();
 
             user.updateProfile(profileUpdates)
                     .addOnCompleteListener(task -> {
-                        if (task.isSuccessful()) {
-                            Toast.makeText(SettingsActivity.this, "Profile updated", Toast.LENGTH_SHORT).show();
-                            loadProfileImage();
+                        if (!task.isSuccessful()) {
+                            Toast.makeText(SettingsActivity.this, "Failed to update Firebase profile", Toast.LENGTH_SHORT).show();
                         }
                     });
         }
@@ -212,95 +225,60 @@ public class SettingsActivity extends AppCompatActivity {
     private void updateUserProfileField(String field, String text, TextView textView) {
         FirebaseUser user = mAuth.getCurrentUser();
         if (user != null) {
-            StorageReference profileRef = storageReference.child("profiles/" + user.getUid() + "/profile.json");
-            final long ONE_MEGABYTE = 1024 * 1024;
-            profileRef.getBytes(ONE_MEGABYTE).addOnSuccessListener(bytes -> {
-                String jsonText = new String(bytes, StandardCharsets.UTF_8);
-                try {
-                    JSONObject userProfile = new JSONObject(jsonText);
-                    userProfile.put(field, text);
-                    uploadJsonData(user.getUid(), userProfile, textView, field, text);
-                } catch (JSONException e) {
-                    e.printStackTrace();
-                }
-            }).addOnFailureListener(exception -> {
-                if (((StorageException) exception).getErrorCode() == StorageException.ERROR_OBJECT_NOT_FOUND) {
-                    // Handle the case where profile.json doesn't exist yet
-                    try {
-                        JSONObject userProfile = new JSONObject();
-                        userProfile.put(field, text);
-                        uploadJsonData(user.getUid(), userProfile, textView, field, text);
-                    } catch (JSONException e) {
-                        e.printStackTrace();
-                    }
-                } else {
-                    Toast.makeText(SettingsActivity.this, "Failed to update " + field, Toast.LENGTH_SHORT).show();
-                }
-            });
-        }
-    }
-
-    private void uploadJsonData(String uid, JSONObject jsonObject, TextView textView, String field, String text) {
-        StorageReference jsonReference = storageReference.child("profiles/" + uid + "/profile.json");
-        byte[] jsonData = jsonObject.toString().getBytes();
-        jsonReference.putBytes(jsonData)
-                .addOnSuccessListener(taskSnapshot -> {
-                    textView.setText(text);
-                    if (field.equals("realName")) {
-                        FirebaseUser user = mAuth.getCurrentUser();
-                        if (user != null) {
+            DocumentReference userRef = firestore.collection("users").document(user.getUid());
+            userRef.update(field, text)
+                    .addOnSuccessListener(aVoid -> {
+                        textView.setText(text);
+                        if (field.equals("realName")) {
                             UserProfileChangeRequest profileUpdates = new UserProfileChangeRequest.Builder()
                                     .setDisplayName(text)
                                     .build();
-                            user.updateProfile(profileUpdates);
+                            user.updateProfile(profileUpdates)
+                                    .addOnCompleteListener(task -> {
+                                        if (!task.isSuccessful()) {
+                                            Toast.makeText(SettingsActivity.this, "Failed to update Firebase profile", Toast.LENGTH_SHORT).show();
+                                        }
+                                    });
                         }
-                    }
-                })
-                .addOnFailureListener(e -> Toast.makeText(SettingsActivity.this, "Failed to save profile", Toast.LENGTH_SHORT).show());
+                    })
+                    .addOnFailureListener(e -> Toast.makeText(SettingsActivity.this, "Failed to update " + field, Toast.LENGTH_SHORT).show());
+        }
     }
 
     private void loadProfileImage() {
         FirebaseUser user = mAuth.getCurrentUser();
         if (user != null) {
-            StorageReference profileRef = storageReference.child("profiles/" + user.getUid() + "/profile_image.jpg");
-            final long ONE_MEGABYTE = 1024 * 1024;
-            profileRef.getBytes(ONE_MEGABYTE).addOnSuccessListener(bytes -> {
-                Bitmap bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.length);
-                Glide.with(this)
-                        .load(bitmap)
-                        .apply(RequestOptions.circleCropTransform())
-                        .into(profileImageView);
-            }).addOnFailureListener(exception -> {
-                if (((StorageException) exception).getErrorCode() != StorageException.ERROR_OBJECT_NOT_FOUND) {
-                    // Handle any other errors
-                    Toast.makeText(SettingsActivity.this, "Failed to load profile image", Toast.LENGTH_SHORT).show();
+            DocumentReference userRef = firestore.collection("users").document(user.getUid());
+            userRef.get().addOnSuccessListener(documentSnapshot -> {
+                if (documentSnapshot.exists()) {
+                    String imageUrl = documentSnapshot.getString("profileImageUrl");
+                    if (imageUrl != null && !imageUrl.isEmpty()) {
+                        Glide.with(this)
+                                .load(imageUrl)
+                                .apply(RequestOptions.circleCropTransform())
+                                .into(profileImageView);
+                    }
                 }
-            });
+            }).addOnFailureListener(e -> Toast.makeText(SettingsActivity.this, "Failed to load profile image", Toast.LENGTH_SHORT).show());
         }
     }
 
     private void loadUserProfileData() {
         FirebaseUser user = mAuth.getCurrentUser();
         if (user != null) {
-            StorageReference profileRef = storageReference.child("profiles/" + user.getUid() + "/profile.json");
-            final long ONE_MEGABYTE = 1024 * 1024;
-            profileRef.getBytes(ONE_MEGABYTE).addOnSuccessListener(bytes -> {
-                String jsonText = new String(bytes, StandardCharsets.UTF_8);
-                try {
-                    JSONObject userProfile = new JSONObject(jsonText);
-                    if (userProfile.has("realName")) nameTextView.setText(userProfile.getString("realName"));
-                    if (userProfile.has("username")) usernameTextView.setText(userProfile.getString("username"));
-                    if (userProfile.has("email")) emailTextView.setText(userProfile.getString("email"));
-                    if (userProfile.has("bio")) bioTextView.setText(userProfile.getString("bio"));
-                } catch (JSONException e) {
-                    e.printStackTrace();
+            DocumentReference userRef = firestore.collection("users").document(user.getUid());
+            userRef.get().addOnSuccessListener(documentSnapshot -> {
+                if (documentSnapshot.exists()) {
+                    if (documentSnapshot.contains("realName"))
+                        nameTextView.setText(documentSnapshot.getString("realName"));
+                    if (documentSnapshot.contains("username"))
+                        usernameTextView.setText(documentSnapshot.getString("username"));
+                    if (documentSnapshot.contains("email"))
+                        emailTextView.setText(documentSnapshot.getString("email"));
+                    if (documentSnapshot.contains("bio"))
+                        bioTextView.setText(documentSnapshot.getString("bio"));
                 }
-            }).addOnFailureListener(exception -> {
-                if (((StorageException) exception).getErrorCode() != StorageException.ERROR_OBJECT_NOT_FOUND) {
-                    // Handle any other errors
-                    Toast.makeText(SettingsActivity.this, "Failed to load profile data", Toast.LENGTH_SHORT).show();
-                }
-            });
+            }).addOnFailureListener(e -> Toast.makeText(SettingsActivity.this, "Failed to load profile data", Toast.LENGTH_SHORT).show());
         }
     }
 
