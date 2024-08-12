@@ -8,7 +8,8 @@ public class Contact {
     private int type;
     private long threadId;
     private String address;
-    public Contact(String name, String snippet, String profileImage, long timestamp, int type, long threadId, String address) {
+    private boolean isRegistered;
+    public Contact(String name, String snippet, String profileImage, long timestamp, int type, long threadId, String address, boolean isRegistered) {
         this.name = name;
         this.snippet = snippet;
         this.profileImage = profileImage;
@@ -16,6 +17,7 @@ public class Contact {
         this.type = type;
         this.threadId = threadId;
         this.address = address;
+        this.isRegistered = isRegistered;
     }
 
     public void setSnippet(String snippet) {
@@ -58,5 +60,13 @@ public class Contact {
 
     public String getAddress() {
         return address;
+    }
+
+    public boolean isRegistered() {
+        return isRegistered;
+    }
+
+    public void setRegistered(boolean registered) {
+        isRegistered = registered;
     }
 }

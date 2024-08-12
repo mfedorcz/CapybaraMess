@@ -26,6 +26,7 @@ import com.google.firebase.FirebaseApp;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.QuerySnapshot;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -35,7 +36,9 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
 
+
 public class MainActivity extends AppCompatActivity {
+    private static final int FIRESTORE_BATCH_LIMIT = 30;
 
     private RecyclerView contactsRecyclerView;
     private SmsObserver smsObserver;
@@ -172,7 +175,7 @@ public class MainActivity extends AppCompatActivity {
                 int dateIdx = cursor.getColumnIndexOrThrow(Telephony.Sms.DATE);
                 int typeIdx = cursor.getColumnIndexOrThrow(Telephony.Sms.TYPE);
 
-                int position = 0;
+                List<Contact> contacts = new ArrayList<>();
                 while (cursor.moveToNext()) {
                     long threadId = cursor.getLong(threadIdIdx);
                     String address = cursor.getString(addressIdx);
@@ -181,15 +184,14 @@ public class MainActivity extends AppCompatActivity {
 
                     String name = getContactName(address);
 
-                    Contact contact = new Contact(name, "???", null, date, type, threadId, address);
+                    Contact contact = new Contact(name, "???", null, date, type, threadId, address, false);
 
+                    contacts.add(contact);
                     conversationMap.put(threadId, contact);
-
-                    // Check Firestore for user details based on phone number
-                    checkFirestoreForUserDetails(contact, position);
-
-                    position++;
                 }
+
+                // After extracting all contacts, check their registration status in bulk
+                checkFirestoreForUserDetailsInBulk(contacts);
             }
         } catch (Exception e) {
             Log.e("SMSQuery", "Error fetching SMS conversations", e);
@@ -197,36 +199,73 @@ public class MainActivity extends AppCompatActivity {
         return conversationMap;
     }
 
+    private void checkFirestoreForUserDetailsInBulk(List<Contact> contacts) {
+        List<String> phoneNumbers = contacts.stream()
+                .map(Contact::getAddress)
+                .collect(Collectors.toList());
 
-    private void checkFirestoreForUserDetails(Contact contact, int position) {
-        executorService.execute(() -> {
-            firestore.collection("users")
-                    .whereEqualTo("phoneNumber", contact.getAddress())
-                    .get()
-                    .addOnCompleteListener(task -> {
-                        if (task.isSuccessful() && task.getResult() != null && !task.getResult().isEmpty()) {
-                            DocumentSnapshot document = task.getResult().getDocuments().get(0);
-                            String username = document.getString("username");
-                            String profileImageUrl = document.getString("profileImageUrl");
+        // Split phone numbers into batches
+        List<List<String>> batches = splitListIntoBatches(phoneNumbers, FIRESTORE_BATCH_LIMIT);
 
-                            if (username != null) {
-                                contact.setName(username); // Update name to username
-                            }
+        for (List<String> batch : batches) {
+            executorService.execute(() -> {
+                firestore.collection("users")
+                        .whereIn("phoneNumber", batch)
+                        .get()
+                        .addOnCompleteListener(task -> {
+                            if (task.isSuccessful() && task.getResult() != null) {
+                                QuerySnapshot querySnapshot = task.getResult();
+                                Map<String, DocumentSnapshot> userDocs = querySnapshot.getDocuments().stream()
+                                        .collect(Collectors.toMap(
+                                                doc -> doc.getString("phoneNumber"),
+                                                doc -> doc
+                                        ));
 
-                            if (profileImageUrl != null) {
-                                contact.setProfileImage(profileImageUrl); // Set profile image URL
-                            }
+                                for (Contact contact : contacts) {
+                                    if (batch.contains(contact.getAddress())) {
+                                        DocumentSnapshot document = userDocs.get(contact.getAddress());
+                                        if (document != null) {
+                                            String username = document.getString("username");
+                                            String profileImageUrl = document.getString("profileImageUrl");
 
-                            // Update the UI with the new contact details on the main thread
-                            runOnUiThread(() -> {
-                                ContactsAdapter adapter = (ContactsAdapter) contactsRecyclerView.getAdapter();
-                                if (adapter != null) {
-                                    adapter.notifyItemChanged(position); // Notify adapter to refresh just this item
+                                            contact.setRegistered(true); // Set as registered if found
+                                            if (username != null) {
+                                                contact.setName(username);
+                                                //Log.d("Firestore", "Found profile for phone number: " + contact.getAddress() + ", Username: " + username);
+                                            }
+                                            if (profileImageUrl != null) {
+                                                contact.setProfileImage(profileImageUrl);
+                                                //Log.d("Firestore", "Found profile image for phone number: " + contact.getAddress() + ", Image URL: " + profileImageUrl);
+                                            }
+                                        } else {
+                                            contact.setRegistered(false); // Not registered if no document found
+                                            //Log.d("Firestore", "No profile found for phone number: " + contact.getAddress());
+                                        }
+                                    }
                                 }
-                            });
-                        }
-                    });
-        });
+
+                                // Update the UI on the main thread after checking all contacts in this batch
+                                runOnUiThread(() -> {
+                                    ContactsAdapter adapter = (ContactsAdapter) contactsRecyclerView.getAdapter();
+                                    if (adapter != null) {
+                                        adapter.notifyDataSetChanged();
+                                    }
+                                });
+                            } else {
+                                Log.e("Firestore", "Failed to retrieve profiles from Firestore", task.getException());
+                            }
+                        });
+            });
+        }
+    }
+
+    private List<List<String>> splitListIntoBatches(List<String> list, int batchSize) {
+        List<List<String>> batches = new ArrayList<>();
+        for (int i = 0; i < list.size(); i += batchSize) {
+            int end = Math.min(list.size(), i + batchSize);
+            batches.add(list.subList(i, end));
+        }
+        return batches;
     }
 
 
