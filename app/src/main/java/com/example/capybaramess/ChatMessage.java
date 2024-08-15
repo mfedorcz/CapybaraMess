@@ -1,64 +1,77 @@
 package com.example.capybaramess;
 
+import java.util.Objects;
+
 public class ChatMessage {
-    private String id;  // Unique identifier for the message
-    private String sender;  // Identifier of the sender (could be phone number or user ID)
+    private String senderId;  // User ID of the sender
+    private String recipientId;  // User ID of the recipient
     private String content;  // Text content of the message
     private long timestamp;  // Timestamp for when the message was sent
-    private MessageType type;  // Type of message (incoming or outgoing)
-
+    private MessageType type;
     // Enum to distinguish between incoming and outgoing messages
     public enum MessageType {
         INCOMING, OUTGOING
     }
-
     // Constructor
-    public ChatMessage(String id, String sender, String content, long timestamp, MessageType type) {
-        this.id = id;
-        this.sender = sender;
+    public ChatMessage(String senderId, String recipientId, String content, long timestamp, MessageType type) {
+        this.senderId = senderId;
+        this.recipientId = recipientId;
         this.content = content;
         this.timestamp = timestamp;
         this.type = type;
     }
 
     // Getters and Setters
-    public String getId() {
-        return id;
+    public String getSenderId() {
+        return senderId;
+    }
+    public void setType(MessageType type) {
+        this.type = type;
+    }
+    public MessageType getType() {
+        return type;
     }
 
-    public String getSender() {
-        return sender;
+    public void setSenderId(String senderId) {
+        this.senderId = senderId;
+    }
+
+    public String getRecipientId() {
+        return recipientId;
+    }
+
+    public void setRecipientId(String recipientId) {
+        this.recipientId = recipientId;
     }
 
     public String getContent() {
         return content;
     }
 
-    public long getTimestamp() {
-        return timestamp;
-    }
-
-    public MessageType getType() {
-        return type;
-    }
-
-    public void setId(String id) {
-        this.id = id;
-    }
-
-    public void setSender(String sender) {
-        this.sender = sender;
-    }
-
     public void setContent(String content) {
         this.content = content;
+    }
+
+    public long getTimestamp() {
+        return timestamp;
     }
 
     public void setTimestamp(long timestamp) {
         this.timestamp = timestamp;
     }
 
-    public void setType(MessageType type) {
-        this.type = type;
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        ChatMessage that = (ChatMessage) o;
+        return timestamp == that.timestamp &&
+                senderId.equals(that.senderId) &&
+                content.equals(that.content);
     }
+    @Override
+    public int hashCode() {
+        return Objects.hash(senderId, content, timestamp);
+    }
+
 }

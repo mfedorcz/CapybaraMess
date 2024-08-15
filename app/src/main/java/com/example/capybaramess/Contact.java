@@ -1,6 +1,9 @@
 package com.example.capybaramess;
 
-public class Contact {
+import android.os.Parcel;
+import android.os.Parcelable;
+
+public class Contact implements Parcelable {
     private String name;
     private String snippet;
     private String profileImage;
@@ -9,6 +12,7 @@ public class Contact {
     private long threadId;
     private String address;
     private boolean isRegistered;
+
     public Contact(String name, String snippet, String profileImage, long timestamp, int type, long threadId, String address, boolean isRegistered) {
         this.name = name;
         this.snippet = snippet;
@@ -20,12 +24,48 @@ public class Contact {
         this.isRegistered = isRegistered;
     }
 
-    public void setSnippet(String snippet) {
-        this.snippet = snippet;
+    protected Contact(Parcel in) {
+        name = in.readString();
+        snippet = in.readString();
+        profileImage = in.readString();
+        timestamp = in.readLong();
+        type = in.readInt();
+        threadId = in.readLong();
+        address = in.readString();
+        isRegistered = in.readByte() != 0;
     }
-    public String getSnippet() {
-        return snippet;
+
+    public static final Creator<Contact> CREATOR = new Creator<Contact>() {
+        @Override
+        public Contact createFromParcel(Parcel in) {
+            return new Contact(in);
+        }
+
+        @Override
+        public Contact[] newArray(int size) {
+            return new Contact[size];
+        }
+    };
+
+    @Override
+    public void writeToParcel(Parcel dest, int flags) {
+        dest.writeString(name);
+        dest.writeString(snippet);
+        dest.writeString(profileImage);
+        dest.writeLong(timestamp);
+        dest.writeInt(type);
+        dest.writeLong(threadId);
+        dest.writeString(address);
+        dest.writeByte((byte) (isRegistered ? 1 : 0));
     }
+
+    @Override
+    public int describeContents() {
+        return 0;
+    }
+
+    // Getters and Setters...
+
     public String getName() {
         return name;
     }
@@ -34,8 +74,12 @@ public class Contact {
         this.name = name;
     }
 
-    public long getDate() {
-        return timestamp;
+    public String getSnippet() {
+        return snippet;
+    }
+
+    public void setSnippet(String snippet) {
+        this.snippet = snippet;
     }
 
     public String getProfileImage() {
@@ -46,12 +90,12 @@ public class Contact {
         this.profileImage = profileImage;
     }
 
-    public int getType(){
-        return type;
+    public long getTimestamp() {
+        return timestamp;
     }
 
-    public void setThreadId(long threadId) {
-        this.threadId = threadId;
+    public int getType() {
+        return type;
     }
 
     public long getThreadId() {

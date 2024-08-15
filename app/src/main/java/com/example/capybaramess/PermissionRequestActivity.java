@@ -56,7 +56,8 @@ public class PermissionRequestActivity extends AppCompatActivity {
                 Manifest.permission.READ_CONTACTS,
                 Manifest.permission.READ_SMS,
                 Manifest.permission.RECEIVE_SMS,
-                Manifest.permission.SEND_SMS
+                Manifest.permission.SEND_SMS,
+                Manifest.permission.READ_PHONE_STATE
         };
 
         ActivityCompat.requestPermissions(this, permissions, PERMISSIONS_REQUEST_CODE);

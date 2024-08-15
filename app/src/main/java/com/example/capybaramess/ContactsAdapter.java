@@ -41,6 +41,7 @@ public class ContactsAdapter extends RecyclerView.Adapter<ContactsAdapter.ViewHo
     public void setContacts(List<Contact> contacts) {
         mContacts = contacts.toArray(new Contact[0]);
     }
+
     public ContactsAdapter(Context context, Contact[] contacts) {
         mContext = context;
         mContacts = contacts;
@@ -55,9 +56,8 @@ public class ContactsAdapter extends RecyclerView.Adapter<ContactsAdapter.ViewHo
             if (position != RecyclerView.NO_POSITION) {
                 Contact contact = mContacts[position];
                 Intent intent = new Intent(mContext, ConversationActivity.class);
-                intent.putExtra("contactName", contact.getName());
-                intent.putExtra("threadId", contact.getThreadId());
-                intent.putExtra("address", contact.getAddress());
+                intent.putExtra("contact", contact); // Pass the entire Contact object
+                intent.putExtra("threadID", contact.getThreadId()); //Ensuring threadID is passed
                 mContext.startActivity(intent);
             }
         });
@@ -78,7 +78,6 @@ public class ContactsAdapter extends RecyclerView.Adapter<ContactsAdapter.ViewHo
         // Check if the contact has a profile image URL
         if (contact.getProfileImage() != null && !contact.getProfileImage().isEmpty()) {
             // Load the profile image from the URL
-            //Log.d("GlideLoading", "Loading image for " + contact.getName() + " from URL: " + contact.getProfileImage());
             Glide.with(mContext)
                     .load(contact.getProfileImage())
                     .apply(options)
@@ -91,8 +90,6 @@ public class ContactsAdapter extends RecyclerView.Adapter<ContactsAdapter.ViewHo
                     .into(holder.imageView);
         }
     }
-
-
 
     @Override
     public int getItemCount() {

@@ -1,5 +1,6 @@
 package com.example.capybaramess;
 
+import android.Manifest;
 import android.content.pm.PackageManager;
 import android.database.ContentObserver;
 import android.os.Bundle;
@@ -155,7 +156,8 @@ public class MainActivity extends AppCompatActivity {
         return ContextCompat.checkSelfPermission(this, android.Manifest.permission.READ_CONTACTS) == PackageManager.PERMISSION_GRANTED &&
                 ContextCompat.checkSelfPermission(this, android.Manifest.permission.READ_SMS) == PackageManager.PERMISSION_GRANTED &&
                 ContextCompat.checkSelfPermission(this, android.Manifest.permission.RECEIVE_SMS) == PackageManager.PERMISSION_GRANTED &&
-                ContextCompat.checkSelfPermission(this, android.Manifest.permission.SEND_SMS) == PackageManager.PERMISSION_GRANTED;
+                ContextCompat.checkSelfPermission(this, android.Manifest.permission.SEND_SMS) == PackageManager.PERMISSION_GRANTED &&
+                ContextCompat.checkSelfPermission(this, android.Manifest.permission.READ_PHONE_STATE) == PackageManager.PERMISSION_GRANTED;
     }
 
     private Map<Long, Contact> fetchInboxConversations() {
@@ -307,7 +309,7 @@ public class MainActivity extends AppCompatActivity {
         fetchAndAddSnippetsToConversations(conversationMap);
 
         return conversationMap.values().stream()
-                .sorted((c1, c2) -> Long.compare(c2.getDate(), c1.getDate()))
+                .sorted((c1, c2) -> Long.compare(c2.getTimestamp(), c1.getTimestamp()))
                 .collect(Collectors.toList());
     }
 
