@@ -11,6 +11,8 @@ import android.widget.TextView;
 import androidx.recyclerview.widget.RecyclerView;
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.request.RequestOptions;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.firestore.FirebaseFirestore;
 
 import java.util.List;
 
@@ -68,27 +70,70 @@ public class ContactsAdapter extends RecyclerView.Adapter<ContactsAdapter.ViewHo
     public void onBindViewHolder(ViewHolder holder, int position) {
         Contact contact = mContacts[position];
         holder.nameTextView.setText(contact.getName());
-        holder.snippetTextView.setText(contact.getSnippet()); // Set the text for snippet
+
+        // Initially set the snippet text to an empty string or a loading indicator
+        holder.snippetTextView.setText("Loading...");
 
         RequestOptions options = new RequestOptions()
                 .circleCrop()
                 .placeholder(defaultImages[position % defaultImages.length])
                 .error(defaultImages[position % defaultImages.length]);
 
-        // Check if the contact has a profile image URL
+        // Load the profile image if available
         if (contact.getProfileImage() != null && !contact.getProfileImage().isEmpty()) {
-            // Load the profile image from the URL
             Glide.with(mContext)
                     .load(contact.getProfileImage())
                     .apply(options)
                     .into(holder.imageView);
         } else {
-            // Load a default image
             Glide.with(mContext)
                     .load(defaultImages[position % defaultImages.length])
                     .apply(options)
                     .into(holder.imageView);
         }
+
+        // Fetch last OTT chat message from Firebase and update the snippet if isRegistered == true
+        if(contact.isRegistered()) {
+            fetchLastMessageFromFirebase(contact, holder.snippetTextView);
+        }else {
+            // Set the SMS snippet only if the Firebase snippet has not been set (fallback)
+            if (contact.getLastMessage() == null && contact.getSnippet() != null) {
+                holder.snippetTextView.setText(contact.getSnippet());
+            }
+        }
+    }
+
+    private void fetchLastMessageFromFirebase(Contact contact, TextView snippetTextView) {
+        String conversationId = AppConfig.getConversationId(contact.getAddress());  // Generate the conversation ID based on phone numbers
+
+        Log.d("FirebaseQuery", "Fetching last message for conversation ID: " + conversationId);
+
+        FirebaseFirestore firestore = FirebaseFirestore.getInstance();
+        firestore.collection("conversations")
+                .document(conversationId)
+                .get()
+                .addOnSuccessListener(documentSnapshot -> {
+                    if (documentSnapshot.exists()) {
+                        String lastMessage = documentSnapshot.getString("lastMessage");
+                        String lastSenderId = documentSnapshot.getString("lastSenderId");
+                        if (lastMessage != null) {
+                            contact.setLastMessage(lastMessage);
+                            String formattedSnippet = lastSenderId.equals(AppConfig.getPhoneNumber()) ? "You: " + lastMessage : lastMessage;
+                            contact.setLastMessage(formattedSnippet);
+                            snippetTextView.setText(formattedSnippet);
+                        } else {
+                            // If no last message found in Firebase, fall back to SMS snippet
+                            if (contact.getSnippet() != null) {
+                                snippetTextView.setText(contact.getSnippet());
+                            }
+                        }
+                    } else {
+                        Log.d("FirebaseQuery", "No document found for conversation ID: " + conversationId);
+                    }
+                })
+                .addOnFailureListener(e -> {
+                    Log.e("FirebaseQuery", "Failed to fetch last message for conversation ID: " + conversationId, e);
+                });
     }
 
     @Override

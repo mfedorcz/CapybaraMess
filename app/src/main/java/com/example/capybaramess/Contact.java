@@ -12,6 +12,7 @@ public class Contact implements Parcelable {
     private long threadId;
     private String address;
     private boolean isRegistered;
+    private String lastMessage;
 
     public Contact(String name, String snippet, String profileImage, long timestamp, int type, long threadId, String address, boolean isRegistered) {
         this.name = name;
@@ -112,5 +113,13 @@ public class Contact implements Parcelable {
 
     public void setRegistered(boolean registered) {
         isRegistered = registered;
+    }
+
+    public String getLastMessage() {
+        return lastMessage;
+    }
+
+    public void setLastMessage(String lastMessage) {
+        this.lastMessage = lastMessage;
     }
 }

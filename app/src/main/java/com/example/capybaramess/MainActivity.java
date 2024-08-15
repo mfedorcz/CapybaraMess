@@ -1,12 +1,14 @@
 package com.example.capybaramess;
 
 import android.Manifest;
+import android.content.Context;
 import android.content.pm.PackageManager;
 import android.database.ContentObserver;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.provider.ContactsContract;
+import android.telephony.TelephonyManager;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -17,6 +19,7 @@ import android.net.Uri;
 import android.provider.Telephony;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.DividerItemDecoration;
 import androidx.recyclerview.widget.LinearLayoutManager;
@@ -46,6 +49,7 @@ public class MainActivity extends AppCompatActivity {
     private ImageView settingsIcon;
     private ExecutorService executorService;
     private FirebaseFirestore firestore;
+    private String phoneNumber; // Store the device's phone number
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -62,6 +66,16 @@ public class MainActivity extends AppCompatActivity {
         if (!hasNecessaryPermissions()) {
             Intent intent = new Intent(this, PermissionRequestActivity.class);
             startActivity(intent);
+            finish();
+            return;
+        }
+
+        // Retrieve the device's phone number and store it in AppConfig
+        phoneNumber = getDevicePhoneNumber();
+        AppConfig.setPhoneNumber(phoneNumber);
+
+        if (phoneNumber == null) {
+            Log.e("ConversationActivity", "Phone number could not be retrieved, finishing activity.");
             finish();
             return;
         }
@@ -325,5 +339,14 @@ public class MainActivity extends AppCompatActivity {
         }
 
         return contactName != null ? contactName : phoneNumber;
+    }
+    private String getDevicePhoneNumber() {
+        // Get the device's phone number
+        TelephonyManager telephonyManager = (TelephonyManager) getSystemService(Context.TELEPHONY_SERVICE);
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.READ_PHONE_STATE) != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.READ_PHONE_STATE}, 1);
+            return null;
+        }
+        return telephonyManager.getLine1Number();
     }
 }

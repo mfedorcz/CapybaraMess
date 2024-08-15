@@ -73,7 +73,7 @@ public class ConversationActivity extends AppCompatActivity {
         executorService = Executors.newSingleThreadExecutor();
 
         // Retrieve the device's phone number
-        phoneNumber = getDevicePhoneNumber();
+        phoneNumber = AppConfig.getPhoneNumber();
 
         if (phoneNumber == null) {
             Log.e("ConversationActivity", "Phone number could not be retrieved, finishing activity.");
@@ -167,15 +167,6 @@ public class ConversationActivity extends AppCompatActivity {
         executorService.shutdown();
     }
 
-    private String getDevicePhoneNumber() {
-        // Get the device's phone number
-        TelephonyManager telephonyManager = (TelephonyManager) getSystemService(Context.TELEPHONY_SERVICE);
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.READ_PHONE_STATE) != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.READ_PHONE_STATE}, 1);
-            return null;
-        }
-        return telephonyManager.getLine1Number();
-    }
 
     private void initializeSmsReceiver() {
         smsReceiver = new BroadcastReceiver() {
@@ -230,20 +221,20 @@ public class ConversationActivity extends AppCompatActivity {
     }
 
     private void sendViaFirebase(ChatMessage message) {
-        String conversationId = getConversationId(message.getSenderId(), message.getRecipientId());
+        String conversationId = AppConfig.getConversationId(message.getRecipientId());
 
-        // Reference to the conversation document
+        //Reference to the conversation document
         DocumentReference conversationRef = firestore.collection("conversations")
                 .document(conversationId);
 
-        // Create a map to represent the message data
+        //Create a map to represent the message data
         Map<String, Object> messageData = new HashMap<>();
         messageData.put("senderId", message.getSenderId());
         messageData.put("recipientId", message.getRecipientId());
         messageData.put("content", message.getContent());
         messageData.put("timestamp", message.getTimestamp());
 
-        // Add the message to the messages sub-collection
+        //Add the message to the messages sub-collection
         conversationRef.collection("messages")
                 .add(messageData)
                 .addOnSuccessListener(documentReference -> Log.d("Firebase", "Message sent successfully via Firebase."))
@@ -257,6 +248,7 @@ public class ConversationActivity extends AppCompatActivity {
         Map<String, Object> conversationData = new HashMap<>();
         conversationData.put("participants", Arrays.asList(message.getSenderId(), message.getRecipientId()));
         conversationData.put("lastMessage", message.getContent());
+        conversationData.put("lastSenderId", AppConfig.getPhoneNumber());
         conversationData.put("lastTimestamp", message.getTimestamp());
 
         conversationRef.set(conversationData, SetOptions.merge())
@@ -264,10 +256,6 @@ public class ConversationActivity extends AppCompatActivity {
                 .addOnFailureListener(e -> Log.e("Firebase", "Failed to update conversation.", e));
     }
 
-    private String getConversationId(String senderId, String recipientId) {
-        // This should generate a unique conversation ID based on the participants' phone numbers
-        return senderId.compareTo(recipientId) < 0 ? senderId + "_" + recipientId : recipientId + "_" + senderId;
-    }
 
     private void sendViaSMS(ChatMessage message) {
         SmsManager smsManager = SmsManager.getDefault();
@@ -330,7 +318,7 @@ public class ConversationActivity extends AppCompatActivity {
         return messages;
     }
     private void fetchMessagesFromFirebase() {
-        String conversationId = getConversationId(phoneNumber, contact.getAddress());
+        String conversationId = AppConfig.getConversationId(contact.getAddress());
 
         firestore.collection("conversations")
                 .document(conversationId)
@@ -354,7 +342,7 @@ public class ConversationActivity extends AppCompatActivity {
     }
 
     private void setupRealTimeUpdates() {
-        String conversationId = getConversationId(phoneNumber, contact.getAddress());
+        String conversationId = AppConfig.getConversationId(contact.getAddress());
 
         firestore.collection("conversations")
                 .document(conversationId)
