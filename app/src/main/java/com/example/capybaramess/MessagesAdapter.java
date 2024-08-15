@@ -10,18 +10,24 @@ import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.RecyclerView;
 
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 
-//This adapter handles viewing/recycling of chat messages.
 public class MessagesAdapter extends RecyclerView.Adapter<MessagesAdapter.ViewHolder> {
     private List<ChatMessage> mMessages;
     private Context mContext;
+    private int selectedPosition = RecyclerView.NO_POSITION;  // Track the selected position
 
     public static class ViewHolder extends RecyclerView.ViewHolder {
-        public TextView textView;
+        public TextView messageTextView;
+        public TextView additionalInfoTextView;
+
         public ViewHolder(View v) {
             super(v);
-            textView = v.findViewById(R.id.message_text);
+            messageTextView = v.findViewById(R.id.message_text);
+            additionalInfoTextView = v.findViewById(R.id.additional_info_text);
         }
     }
 
@@ -39,25 +45,56 @@ public class MessagesAdapter extends RecyclerView.Adapter<MessagesAdapter.ViewHo
     @Override
     public void onBindViewHolder(ViewHolder holder, int position) {
         ChatMessage message = mMessages.get(position);
-        holder.textView.setText(message.getContent());
+        holder.messageTextView.setText(message.getContent());
 
-        ConstraintLayout.LayoutParams params = (ConstraintLayout.LayoutParams) holder.textView.getLayoutParams();
+        // Format the timestamp to a readable date and time
+        String formattedTimestamp = new SimpleDateFormat("dd MMM yyyy, HH:mm", Locale.getDefault()).format(new Date(message.getTimestamp()));
+        String platformText = message.getPlatform() == ChatMessage.MessagePlatform.SMS ? "SMS" : "OTT";
+        String additionalInfoText = formattedTimestamp + " • " + platformText;
+        holder.additionalInfoTextView.setText(additionalInfoText);
+
+        ConstraintLayout.LayoutParams params = (ConstraintLayout.LayoutParams) holder.messageTextView.getLayoutParams();
 
         // Set the background and text color based on message type
         if (message.getType() == ChatMessage.MessageType.OUTGOING) {
-            holder.textView.setBackgroundResource(R.drawable.outgoing_message_bg);
-            holder.textView.setTextColor(ContextCompat.getColor(mContext, R.color.colorPrimary));  // Set text color to white for outgoing messages
+            holder.messageTextView.setBackgroundResource(R.drawable.outgoing_message_bg);
+            holder.messageTextView.setTextColor(ContextCompat.getColor(mContext, R.color.colorPrimary));
             params.horizontalBias = 1.0f; // Align to the right
         } else {
-            holder.textView.setBackgroundResource(R.drawable.incoming_message_bg);
-            holder.textView.setTextColor(ContextCompat.getColor(mContext, R.color.colorOnSecondary));
+            holder.messageTextView.setBackgroundResource(R.drawable.incoming_message_bg);
+            holder.messageTextView.setTextColor(ContextCompat.getColor(mContext, R.color.colorOnSecondary));
             params.horizontalBias = 0.0f; // Align to the left
         }
-        holder.textView.setLayoutParams(params);  // Apply layout parameters
+        holder.messageTextView.setLayoutParams(params);  // Apply layout parameters
+
+        // Toggle visibility based on the selected position
+        holder.additionalInfoTextView.setVisibility(position == selectedPosition ? View.VISIBLE : View.GONE);
+
+        // Set click listener to show the timestamp for the clicked message and hide others
+        holder.messageTextView.setOnClickListener(v -> {
+            int previousPosition = selectedPosition;
+            selectedPosition = holder.getBindingAdapterPosition();
+
+            // Notify changes for the current and previously selected item
+            notifyItemChanged(previousPosition);
+            notifyItemChanged(selectedPosition);
+        });
     }
 
     @Override
     public int getItemCount() {
         return mMessages.size();
+    }
+
+    // Method to get the current selected position
+    public int getSelectedPosition() {
+        return selectedPosition;
+    }
+
+    // Method to clear the selection and hide the timestamp
+    public void clearSelection() {
+        int previousPosition = selectedPosition;
+        selectedPosition = RecyclerView.NO_POSITION;
+        notifyItemChanged(previousPosition);  // Notify to hide the previous timestamp
     }
 }

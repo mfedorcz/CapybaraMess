@@ -9,16 +9,21 @@ public class ChatMessage {
     private long timestamp;  // Timestamp for when the message was sent
     private MessageType type;
     // Enum to distinguish between incoming and outgoing messages
+    private MessagePlatform platform;  // Whether the message is SMS or OTT
     public enum MessageType {
         INCOMING, OUTGOING
     }
+    public enum MessagePlatform {
+        SMS, OTT
+    }
     // Constructor
-    public ChatMessage(String senderId, String recipientId, String content, long timestamp, MessageType type) {
+    public ChatMessage(String senderId, String recipientId, String content, long timestamp, MessageType type, MessagePlatform platform) {
         this.senderId = senderId;
         this.recipientId = recipientId;
         this.content = content;
         this.timestamp = timestamp;
         this.type = type;
+        this.platform = platform;
     }
 
     // Getters and Setters
@@ -58,6 +63,13 @@ public class ChatMessage {
 
     public void setTimestamp(long timestamp) {
         this.timestamp = timestamp;
+    }
+    public MessagePlatform getPlatform() {
+        return platform;
+    }
+
+    public void setPlatform(MessagePlatform platform) {
+        this.platform = platform;
     }
 
     @Override

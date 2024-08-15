@@ -125,7 +125,8 @@ public class ConversationActivity extends AppCompatActivity {
                         contact.getAddress(),  // Address of the recipient
                         messageText,
                         System.currentTimeMillis(),
-                        ChatMessage.MessageType.OUTGOING  // MessageType set to OUTGOING
+                        ChatMessage.MessageType.OUTGOING,  //MessageType default set to OUTGOING
+                        ChatMessage.MessagePlatform.SMS //MessagePlatform default to SMS
                 );
 
                 // Adding message to the list and notify the adapter
@@ -142,6 +143,7 @@ public class ConversationActivity extends AppCompatActivity {
                 }
             }
         });
+
 
         // Retrieving the threadId from the intent
         long threadId = contact.getThreadId();
@@ -189,7 +191,7 @@ public class ConversationActivity extends AppCompatActivity {
                                 // Check if the message is from the same thread
                                 if (sender.equals(contact.getAddress())) {
                                     ChatMessage newMessage = new ChatMessage(
-                                            sender, phoneNumber, messageBody, timestamp, ChatMessage.MessageType.INCOMING
+                                            sender, phoneNumber, messageBody, timestamp, ChatMessage.MessageType.INCOMING, ChatMessage.MessagePlatform.SMS
                                     );
                                     updateUIWithNewMessage(newMessage);
                                 }
@@ -221,7 +223,7 @@ public class ConversationActivity extends AppCompatActivity {
     }
 
     private void sendViaFirebase(ChatMessage message) {
-        String conversationId = AppConfig.getConversationId(message.getRecipientId());
+        String conversationId = AppConfig.getConversationId(message.getRecipientId().length() == 9 ? "+48" + message.getRecipientId() : message.getRecipientId());
 
         //Reference to the conversation document
         DocumentReference conversationRef = firestore.collection("conversations")
@@ -306,7 +308,7 @@ public class ConversationActivity extends AppCompatActivity {
                         int type = cursor.getInt(typeIdx);
 
                         String receiver = type == Telephony.Sms.MESSAGE_TYPE_SENT ? contact.getAddress() : phoneNumber;
-                        messages.add(new ChatMessage(sender, receiver, content, timestamp, type == Telephony.Sms.MESSAGE_TYPE_SENT ? ChatMessage.MessageType.OUTGOING : ChatMessage.MessageType.INCOMING));
+                        messages.add(new ChatMessage(sender, receiver, content, timestamp, type == Telephony.Sms.MESSAGE_TYPE_SENT ? ChatMessage.MessageType.OUTGOING : ChatMessage.MessageType.INCOMING, ChatMessage.MessagePlatform.SMS));
                     } else {
                         Log.e("SMS Fetch", "One of the required columns is missing in the SMS database.");
                     }
@@ -318,7 +320,7 @@ public class ConversationActivity extends AppCompatActivity {
         return messages;
     }
     private void fetchMessagesFromFirebase() {
-        String conversationId = AppConfig.getConversationId(contact.getAddress());
+        String conversationId = AppConfig.getConversationId(contact.getAddress().length() == 9 ? "+48" + contact.getAddress() : contact.getAddress());
 
         firestore.collection("conversations")
                 .document(conversationId)
@@ -333,7 +335,7 @@ public class ConversationActivity extends AppCompatActivity {
                         long timestamp = document.getLong("timestamp");
 
                         ChatMessage.MessageType messageType = senderId.equals(phoneNumber) ? ChatMessage.MessageType.OUTGOING : ChatMessage.MessageType.INCOMING;
-                        ChatMessage newMessage = new ChatMessage(senderId, recipientId, content, timestamp, messageType);
+                        ChatMessage newMessage = new ChatMessage(senderId, recipientId, content, timestamp, messageType, ChatMessage.MessagePlatform.OTT);
 
                         updateUIWithNewMessage(newMessage);  // This method now checks for duplicates
                     }
@@ -342,7 +344,7 @@ public class ConversationActivity extends AppCompatActivity {
     }
 
     private void setupRealTimeUpdates() {
-        String conversationId = AppConfig.getConversationId(contact.getAddress());
+        String conversationId = AppConfig.getConversationId(contact.getAddress().length() == 9 ? "+48" + contact.getAddress() : contact.getAddress());
 
         firestore.collection("conversations")
                 .document(conversationId)
@@ -362,7 +364,7 @@ public class ConversationActivity extends AppCompatActivity {
                             long timestamp = document.getLong("timestamp");
 
                             ChatMessage.MessageType messageType = senderId.equals(phoneNumber) ? ChatMessage.MessageType.OUTGOING : ChatMessage.MessageType.INCOMING;
-                            ChatMessage newMessage = new ChatMessage(senderId, recipientId, content, timestamp, messageType);
+                            ChatMessage newMessage = new ChatMessage(senderId, recipientId, content, timestamp, messageType, ChatMessage.MessagePlatform.OTT);
 
                             updateUIWithNewMessage(newMessage);  // This method now checks for duplicates
                         }
