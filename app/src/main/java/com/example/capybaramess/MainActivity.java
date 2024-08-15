@@ -2,21 +2,21 @@ package com.example.capybaramess;
 
 import android.Manifest;
 import android.content.Context;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.database.ContentObserver;
+import android.database.Cursor;
+import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.provider.ContactsContract;
+import android.provider.Telephony;
 import android.telephony.TelephonyManager;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
-import android.widget.ImageView;
 import android.widget.TextView;
-import android.database.Cursor;
-import android.net.Uri;
-import android.provider.Telephony;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
@@ -24,86 +24,100 @@ import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.DividerItemDecoration;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
-import android.content.Intent;
 
+import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.firebase.FirebaseApp;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
-import com.google.firebase.firestore.QuerySnapshot;
-
-import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.HashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.stream.Collectors;
-
 
 public class MainActivity extends AppCompatActivity {
-    private static final int FIRESTORE_BATCH_LIMIT = 30;
 
     private RecyclerView contactsRecyclerView;
+    private FloatingActionButton fabAdd;
     private SmsObserver smsObserver;
-    private ImageView settingsIcon;
     private ExecutorService executorService;
     private FirebaseFirestore firestore;
-    private String phoneNumber; // Store the device's phone number
-    private FloatingActionButton fabAdd;
+    private String phoneNumber;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        // Initialize Firebase
-        FirebaseApp.initializeApp(this);
-        firestore = FirebaseFirestore.getInstance();
 
-        // Initialize ExecutorService
-        executorService = Executors.newSingleThreadExecutor();
+        initializeFirebase();
+        initializeExecutorService();
 
-        // Check permissions at the start
         if (!hasNecessaryPermissions()) {
-            Intent intent = new Intent(this, PermissionRequestActivity.class);
-            startActivity(intent);
-            finish();
+            requestPermissionsAndExit();
             return;
         }
 
-        // Retrieve the device's phone number and store it in AppConfig
-        phoneNumber = getDevicePhoneNumber();
-        AppConfig.setPhoneNumber(phoneNumber);
-
-        if (phoneNumber == null) {
-            Log.e("ConversationActivity", "Phone number could not be retrieved, finishing activity.");
-            finish();
+        initializePhoneNumber();
+        if (!isPhoneNumberValid()) {
             return;
         }
 
-        // Check if the user is signed in
-        if (FirebaseAuth.getInstance().getCurrentUser() == null) {
-            Intent intent = new Intent(this, RegistrationActivity.class);
-            startActivity(intent);
-            finish();
+        if (!isUserSignedIn()) {
+            redirectToRegistration();
             return;
         }
 
         setContentView(R.layout.main_activity);
 
-        // Initialize the FloatingActionButton
-        fabAdd = findViewById(R.id.fab_add);
-        fabAdd.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                Intent intent = new Intent(MainActivity.this, AddConversationActivity.class);
-                startActivity(intent);
-            }
-        });
-
+        initializeUIComponents();
         setupActionBar();
         setupRecyclerView();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        registerSmsObserver();
+        updateConversationList();
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        unregisterSmsObserver();
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        executorService.shutdown();
+    }
+
+    private void initializeFirebase() {
+        FirebaseApp.initializeApp(this);
+        firestore = FirebaseFirestore.getInstance();
+    }
+
+    private void initializeExecutorService() {
+        executorService = Executors.newSingleThreadExecutor();
+    }
+
+    private void initializePhoneNumber() {
+        phoneNumber = getDevicePhoneNumber();
+        String firebasePhoneNumber = FirebaseAuth.getInstance().getCurrentUser().getPhoneNumber();
+        if (firebasePhoneNumber == null || !firebasePhoneNumber.equals(phoneNumber)) {
+            Log.w("PhoneNumberCheck", "Phone number mismatch or phone number is missing!");
+        } else {
+            Log.d("PhoneNumberCheck", "Phone number matches.");
+        }
+        AppConfig.setPhoneNumber(phoneNumber);
+    }
+
+    private void initializeUIComponents() {
+        fabAdd = findViewById(R.id.fab_add);
+        fabAdd.setOnClickListener(v -> startActivity(new Intent(MainActivity.this, AddConversationActivity.class)));
     }
 
     private void setupActionBar() {
@@ -113,45 +127,16 @@ public class MainActivity extends AppCompatActivity {
         TextView titleText = customView.findViewById(R.id.actionbar_title);
         titleText.setText("Chats");
         getSupportActionBar().setCustomView(customView);
-        settingsIcon = findViewById(R.id.actionbar_settings);
-        settingsIcon.setVisibility(View.VISIBLE);
-        settingsIcon.setOnClickListener(v -> startActivity(new Intent(MainActivity.this, SettingsActivity.class)));
     }
 
     private void setupRecyclerView() {
         contactsRecyclerView = findViewById(R.id.contactsRecyclerView);
         contactsRecyclerView.setLayoutManager(new LinearLayoutManager(this));
-        ContactsAdapter adapter = new ContactsAdapter(this, new Contact[0]);
-        contactsRecyclerView.setAdapter(adapter);
+        contactsRecyclerView.setAdapter(new ContactsAdapter(this, new Contact[0]));
 
         DividerItemDecoration dividerItemDecoration = new DividerItemDecoration(contactsRecyclerView.getContext(), LinearLayoutManager.VERTICAL);
         dividerItemDecoration.setDrawable(ContextCompat.getDrawable(this, R.drawable.divider));
         contactsRecyclerView.addItemDecoration(dividerItemDecoration);
-    }
-
-    @Override
-    protected void onResume() {
-        super.onResume();
-        if (smsObserver == null) {
-            smsObserver = new SmsObserver(new Handler(Looper.getMainLooper()));
-            getContentResolver().registerContentObserver(Telephony.Sms.CONTENT_URI, true, smsObserver);
-        }
-        updateConversationList();
-    }
-
-    @Override
-    protected void onPause() {
-        super.onPause();
-        if (smsObserver != null) {
-            getContentResolver().unregisterContentObserver(smsObserver);
-            smsObserver = null;
-        }
-    }
-
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
-        executorService.shutdown(); //Shut down the executor service when activity is destroyed
     }
 
     private class SmsObserver extends ContentObserver {
@@ -166,29 +151,63 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    private void updateConversationList() {
-        executorService.execute(() -> {
-            List<Contact> newConversations = getSMSConversations();
-            runOnUiThread(() -> {
-                ContactsAdapter adapter = (ContactsAdapter) contactsRecyclerView.getAdapter();
-                if (adapter != null) {
-                    adapter.setContacts(newConversations);
-                    adapter.notifyDataSetChanged();
-                }
-            });
-        });
+    private void registerSmsObserver() {
+        if (smsObserver == null) {
+            smsObserver = new SmsObserver(new Handler(Looper.getMainLooper()));
+            getContentResolver().registerContentObserver(Telephony.Sms.CONTENT_URI, true, smsObserver);
+        }
+    }
+
+    private void unregisterSmsObserver() {
+        if (smsObserver != null) {
+            getContentResolver().unregisterContentObserver(smsObserver);
+            smsObserver = null;
+        }
     }
 
     private boolean hasNecessaryPermissions() {
-        return ContextCompat.checkSelfPermission(this, android.Manifest.permission.READ_CONTACTS) == PackageManager.PERMISSION_GRANTED &&
-                ContextCompat.checkSelfPermission(this, android.Manifest.permission.READ_SMS) == PackageManager.PERMISSION_GRANTED &&
-                ContextCompat.checkSelfPermission(this, android.Manifest.permission.RECEIVE_SMS) == PackageManager.PERMISSION_GRANTED &&
-                ContextCompat.checkSelfPermission(this, android.Manifest.permission.SEND_SMS) == PackageManager.PERMISSION_GRANTED &&
-                ContextCompat.checkSelfPermission(this, android.Manifest.permission.READ_PHONE_STATE) == PackageManager.PERMISSION_GRANTED;
+        return ContextCompat.checkSelfPermission(this, Manifest.permission.READ_CONTACTS) == PackageManager.PERMISSION_GRANTED &&
+                ContextCompat.checkSelfPermission(this, Manifest.permission.READ_SMS) == PackageManager.PERMISSION_GRANTED &&
+                ContextCompat.checkSelfPermission(this, Manifest.permission.RECEIVE_SMS) == PackageManager.PERMISSION_GRANTED &&
+                ContextCompat.checkSelfPermission(this, Manifest.permission.SEND_SMS) == PackageManager.PERMISSION_GRANTED &&
+                ContextCompat.checkSelfPermission(this, Manifest.permission.READ_PHONE_STATE) == PackageManager.PERMISSION_GRANTED;
+    }
+
+    private void requestPermissionsAndExit() {
+        Intent intent = new Intent(this, PermissionRequestActivity.class);
+        startActivity(intent);
+        finish();
+    }
+
+    private boolean isPhoneNumberValid() {
+        if (phoneNumber == null) {
+            Log.e("ConversationActivity", "Phone number could not be retrieved, finishing activity.");
+            finish();
+            return false;
+        }
+        return true;
+    }
+
+    private boolean isUserSignedIn() {
+        return FirebaseAuth.getInstance().getCurrentUser() != null;
+    }
+
+    private void redirectToRegistration() {
+        Intent intent = new Intent(this, RegistrationActivity.class);
+        startActivity(intent);
+        finish();
+    }
+
+    private void updateConversationList() {
+        executorService.execute(() -> {
+            Map<Long, Contact> conversationMap = fetchInboxConversations();
+            fetchFirebaseConversations(conversationMap);
+        });
     }
 
     private Map<Long, Contact> fetchInboxConversations() {
         Map<Long, Contact> conversationMap = new HashMap<>();
+
         Uri allSmsUri = Telephony.Sms.CONTENT_URI;
         String[] projection = {
                 Telephony.Sms.THREAD_ID,
@@ -204,10 +223,9 @@ public class MainActivity extends AppCompatActivity {
                 int dateIdx = cursor.getColumnIndexOrThrow(Telephony.Sms.DATE);
                 int typeIdx = cursor.getColumnIndexOrThrow(Telephony.Sms.TYPE);
 
-                List<Contact> contacts = new ArrayList<>();
                 while (cursor.moveToNext()) {
                     long threadId = cursor.getLong(threadIdIdx);
-                    String address = cursor.getString(addressIdx);
+                    String address = AppConfig.checkAndAddCCToNumber(cursor.getString(addressIdx));
                     long date = cursor.getLong(dateIdx);
                     int type = cursor.getInt(typeIdx);
 
@@ -215,129 +233,143 @@ public class MainActivity extends AppCompatActivity {
 
                     Contact contact = new Contact(name, "???", null, date, type, threadId, address, false);
 
-                    contacts.add(contact);
+                    fetchAndAddSmsSnippet(contact);
+
                     conversationMap.put(threadId, contact);
                 }
-
-                // After extracting all contacts, check their registration status in bulk
-                checkFirestoreForUserDetailsInBulk(contacts);
             }
         } catch (Exception e) {
             Log.e("SMSQuery", "Error fetching SMS conversations", e);
         }
+
         return conversationMap;
     }
 
-    private void checkFirestoreForUserDetailsInBulk(List<Contact> contacts) {
-        List<String> phoneNumbers = contacts.stream()
-                .map(Contact::getAddress)
-                .collect(Collectors.toList());
+    private void fetchFirebaseConversations(Map<Long, Contact> conversationMap) {
+        String currentPhoneNumber = AppConfig.checkAndAddCCToNumber(AppConfig.getPhoneNumber());
 
-        // Split phone numbers into batches
-        List<List<String>> batches = splitListIntoBatches(phoneNumbers, FIRESTORE_BATCH_LIMIT);
+        firestore.collection("conversations")
+                .whereArrayContains("participants", currentPhoneNumber)
+                .get()
+                .addOnCompleteListener(task -> {
+                    if (task.isSuccessful() && task.getResult() != null) {
+                        for (DocumentSnapshot document : task.getResult()) {
+                            String lastMessage = document.getString("lastMessage");
+                            String lastSenderId = document.getString("lastSenderId");
+                            String otherParticipant = getOtherParticipant(document.get("participants"), currentPhoneNumber);
+                            Long timestamp = document.getLong("lastTimestamp");
 
-        for (List<String> batch : batches) {
-            executorService.execute(() -> {
-                firestore.collection("users")
-                        .whereIn("phoneNumber", batch)
-                        .get()
-                        .addOnCompleteListener(task -> {
-                            if (task.isSuccessful() && task.getResult() != null) {
-                                QuerySnapshot querySnapshot = task.getResult();
-                                Map<String, DocumentSnapshot> userDocs = querySnapshot.getDocuments().stream()
-                                        .collect(Collectors.toMap(
-                                                doc -> doc.getString("phoneNumber"),
-                                                doc -> doc
-                                        ));
+                            if (otherParticipant != null) {
+                                String normalizedParticipant = AppConfig.checkAndAddCCToNumber(otherParticipant);
+                                String name = getContactName(normalizedParticipant);
 
-                                for (Contact contact : contacts) {
-                                    if (batch.contains(contact.getAddress())) {
-                                        DocumentSnapshot document = userDocs.get(contact.getAddress());
-                                        if (document != null) {
-                                            String username = document.getString("username");
-                                            String profileImageUrl = document.getString("profileImageUrl");
+                                Contact matchingContact = conversationMap.values().stream()
+                                        .filter(contact -> contact.getAddress().equals(normalizedParticipant))
+                                        .findFirst().orElse(null);
 
-                                            contact.setRegistered(true); // Set as registered if found
-                                            if (username != null) {
-                                                contact.setName(username);
-                                                //Log.d("Firestore", "Found profile for phone number: " + contact.getAddress() + ", Username: " + username);
-                                            }
-                                            if (profileImageUrl != null) {
-                                                contact.setProfileImage(profileImageUrl);
-                                                //Log.d("Firestore", "Found profile image for phone number: " + contact.getAddress() + ", Image URL: " + profileImageUrl);
-                                            }
-                                        } else {
-                                            contact.setRegistered(false); // Not registered if no document found
-                                            //Log.d("Firestore", "No profile found for phone number: " + contact.getAddress());
-                                        }
+                                int type = lastSenderId.equals(currentPhoneNumber)
+                                        ? Telephony.TextBasedSmsColumns.MESSAGE_TYPE_SENT
+                                        : Telephony.TextBasedSmsColumns.MESSAGE_TYPE_INBOX;
+
+                                if (matchingContact != null) {
+                                    if (timestamp != null && timestamp > matchingContact.getTimestamp()) {
+                                        String formattedSnippet = formatSnippet(lastMessage, type);
+
+                                        matchingContact.setSnippet(formattedSnippet);
+                                        matchingContact.setTimestamp(timestamp);
                                     }
+                                    matchingContact.setRegistered(true);
+                                    fetchProfileImageAndUsernameFromFirebase(matchingContact);
+                                } else {
+                                    // Create a new Contact object and format the snippet
+                                    String formattedSnippet = formatSnippet(lastMessage, type);
+
+                                    Contact contact = new Contact(name, formattedSnippet, null, timestamp != null ? timestamp : 0, -1, -1, normalizedParticipant, true);
+                                    fetchProfileImageAndUsernameFromFirebase(contact);
+                                    conversationMap.put(contact.getThreadId(), contact);
                                 }
-
-                                // Update the UI on the main thread after checking all contacts in this batch
-                                runOnUiThread(() -> {
-                                    ContactsAdapter adapter = (ContactsAdapter) contactsRecyclerView.getAdapter();
-                                    if (adapter != null) {
-                                        adapter.notifyDataSetChanged();
-                                    }
-                                });
-                            } else {
-                                Log.e("Firestore", "Failed to retrieve profiles from Firestore", task.getException());
                             }
-                        });
-            });
-        }
-    }
+                        }
 
-    private List<List<String>> splitListIntoBatches(List<String> list, int batchSize) {
-        List<List<String>> batches = new ArrayList<>();
-        for (int i = 0; i < list.size(); i += batchSize) {
-            int end = Math.min(list.size(), i + batchSize);
-            batches.add(list.subList(i, end));
-        }
-        return batches;
+                        updateUI(conversationMap);
+
+                    } else {
+                        Log.e("FirebaseQuery", "Failed to fetch Firebase conversations", task.getException());
+                    }
+                });
     }
 
 
+    private void updateUI(Map<Long, Contact> conversationMap) {
+        List<Contact> sortedContacts = new ArrayList<>(conversationMap.values());
+        sortedContacts.sort((c1, c2) -> Long.compare(c2.getTimestamp(), c1.getTimestamp()));
 
-    private void fetchAndAddSnippetsToConversations(Map<Long, Contact> conversationMap) {
-        Uri conversationsUri = Telephony.Sms.Conversations.CONTENT_URI;
-        String[] convProjection = {
-                Telephony.Sms.Conversations.THREAD_ID,
-                Telephony.Sms.Conversations.SNIPPET
+        runOnUiThread(() -> {
+            ContactsAdapter adapter = (ContactsAdapter) contactsRecyclerView.getAdapter();
+            if (adapter != null) {
+                Contact[] contactsArray = sortedContacts.toArray(new Contact[0]);
+                adapter.setContacts(contactsArray);
+                adapter.notifyDataSetChanged();
+            }
+        });
+    }
+
+    private void fetchAndAddSmsSnippet(Contact contact) {
+        Uri smsUri = Telephony.Sms.CONTENT_URI;
+        String[] smsProjection = {
+                Telephony.Sms.THREAD_ID,
+                Telephony.Sms.BODY,
+                Telephony.Sms.DATE,
+                Telephony.Sms.TYPE
         };
 
-        try (Cursor cursor = getContentResolver().query(conversationsUri, convProjection, null, null, null)) {
-            if (cursor != null) {
-                int threadIdIdx = cursor.getColumnIndexOrThrow(Telephony.Sms.Conversations.THREAD_ID);
-                int snippetIdx = cursor.getColumnIndexOrThrow(Telephony.Sms.Conversations.SNIPPET);
+        String selection = Telephony.Sms.THREAD_ID + " = ?";
+        String[] selectionArgs = {String.valueOf(contact.getThreadId())};
 
-                while (cursor.moveToNext()) {
-                    long threadId = cursor.getLong(threadIdIdx);
-                    String snippet = cursor.getString(snippetIdx);
-                    if (snippet != null) {
-                        snippet = formatSnippet(snippet, conversationMap.get(threadId).getType());
-                    }
+        try (Cursor cursor = getContentResolver().query(smsUri, smsProjection, selection, selectionArgs, Telephony.Sms.DATE + " DESC")) {
+            if (cursor != null && cursor.moveToFirst()) {
+                String snippet = cursor.getString(cursor.getColumnIndexOrThrow(Telephony.Sms.BODY));
+                long smsTimestamp = cursor.getLong(cursor.getColumnIndexOrThrow(Telephony.Sms.DATE));
+                int smsType = cursor.getInt(cursor.getColumnIndexOrThrow(Telephony.Sms.TYPE));
 
-                    Contact contact = conversationMap.get(threadId);
-                    if (contact != null) {
-                        contact.setSnippet(snippet);
-                    }
-                }
+                contact.setSnippet(formatSnippet(snippet, smsType));
+                contact.setTimestamp(smsTimestamp);
             }
         }
+    }
+
+    private void fetchProfileImageAndUsernameFromFirebase(Contact contact) {
+        String phoneNumber = AppConfig.checkAndAddCCToNumber(contact.getAddress());
+
+        firestore.collection("users")
+                .whereEqualTo("phoneNumber", phoneNumber)
+                .get()
+                .addOnSuccessListener(querySnapshot -> {
+                    if (!querySnapshot.isEmpty()) {
+                        String profileImageUrl = querySnapshot.getDocuments().get(0).getString("profileImageUrl");
+                        String profileUsername = querySnapshot.getDocuments().get(0).getString("username");
+                        if (profileImageUrl != null && !profileImageUrl.isEmpty()) {
+                            contact.setProfileImage(profileImageUrl);
+                        }
+                        contact.setName(profileUsername);
+                    }
+                })
+                .addOnFailureListener(e -> Log.e("FirebaseQuery", "Failed to fetch profile info for " + phoneNumber, e));
     }
 
     private String formatSnippet(String snippet, int type) {
         return type == Telephony.TextBasedSmsColumns.MESSAGE_TYPE_SENT ? "You: " + snippet : snippet;
     }
 
-    private List<Contact> getSMSConversations() {
-        Map<Long, Contact> conversationMap = fetchInboxConversations();
-        fetchAndAddSnippetsToConversations(conversationMap);
-
-        return conversationMap.values().stream()
-                .sorted((c1, c2) -> Long.compare(c2.getTimestamp(), c1.getTimestamp()))
-                .collect(Collectors.toList());
+    private String getOtherParticipant(Object participants, String currentPhoneNumber) {
+        if (participants instanceof List<?>) {
+            for (Object participant : (List<?>) participants) {
+                if (!participant.equals(currentPhoneNumber)) {
+                    return participant.toString();
+                }
+            }
+        }
+        return null;
     }
 
     private String getContactName(String phoneNumber) {
@@ -353,8 +385,8 @@ public class MainActivity extends AppCompatActivity {
 
         return contactName != null ? contactName : phoneNumber;
     }
+
     private String getDevicePhoneNumber() {
-        // Get the device's phone number
         TelephonyManager telephonyManager = (TelephonyManager) getSystemService(Context.TELEPHONY_SERVICE);
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.READ_PHONE_STATE) != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.READ_PHONE_STATE}, 1);

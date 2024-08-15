@@ -13,6 +13,7 @@ public class AppConfig {
 
     public static String getConversationId(String recipientPhoneNumber) {
         // Ensure that the conversation ID is always in the format "smallerNumber_largerNumber"
+        recipientPhoneNumber = checkAndAddCCToNumber(recipientPhoneNumber);
         return phoneNumber.compareTo(recipientPhoneNumber) < 0
                 ? phoneNumber + "_" + recipientPhoneNumber
                 : recipientPhoneNumber + "_" + phoneNumber;
