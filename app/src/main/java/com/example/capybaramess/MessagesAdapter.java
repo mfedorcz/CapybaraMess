@@ -53,19 +53,27 @@ public class MessagesAdapter extends RecyclerView.Adapter<MessagesAdapter.ViewHo
         String additionalInfoText = formattedTimestamp + " • " + platformText;
         holder.additionalInfoTextView.setText(additionalInfoText);
 
-        ConstraintLayout.LayoutParams params = (ConstraintLayout.LayoutParams) holder.messageTextView.getLayoutParams();
+        ConstraintLayout.LayoutParams messageParams = (ConstraintLayout.LayoutParams) holder.messageTextView.getLayoutParams();
+        ConstraintLayout.LayoutParams infoParams = (ConstraintLayout.LayoutParams) holder.additionalInfoTextView.getLayoutParams();
 
-        // Set the background and text color based on message type
+        // Set the background, text color, and alignment based on the message type
         if (message.getType() == ChatMessage.MessageType.OUTGOING) {
             holder.messageTextView.setBackgroundResource(R.drawable.outgoing_message_bg);
             holder.messageTextView.setTextColor(ContextCompat.getColor(mContext, R.color.colorPrimary));
-            params.horizontalBias = 1.0f; // Align to the right
+            messageParams.horizontalBias = 1.0f; // Align to the right
+            infoParams.horizontalBias = 1.0f; // Align additional info to the right
+            infoParams.startToStart = ConstraintLayout.LayoutParams.UNSET;
+            infoParams.endToEnd = ConstraintLayout.LayoutParams.PARENT_ID;
         } else {
             holder.messageTextView.setBackgroundResource(R.drawable.incoming_message_bg);
             holder.messageTextView.setTextColor(ContextCompat.getColor(mContext, R.color.colorOnSecondary));
-            params.horizontalBias = 0.0f; // Align to the left
+            messageParams.horizontalBias = 0.0f; // Align to the left
+            infoParams.horizontalBias = 0.0f; // Align additional info to the left
+            infoParams.endToEnd = ConstraintLayout.LayoutParams.UNSET;
+            infoParams.startToStart = ConstraintLayout.LayoutParams.PARENT_ID;
         }
-        holder.messageTextView.setLayoutParams(params);  // Apply layout parameters
+        holder.messageTextView.setLayoutParams(messageParams);
+        holder.additionalInfoTextView.setLayoutParams(infoParams);
 
         // Toggle visibility based on the selected position
         holder.additionalInfoTextView.setVisibility(position == selectedPosition ? View.VISIBLE : View.GONE);
@@ -80,6 +88,7 @@ public class MessagesAdapter extends RecyclerView.Adapter<MessagesAdapter.ViewHo
             notifyItemChanged(selectedPosition);
         });
     }
+
 
     @Override
     public int getItemCount() {
