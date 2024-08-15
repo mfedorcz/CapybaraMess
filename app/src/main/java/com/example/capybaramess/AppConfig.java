@@ -17,4 +17,11 @@ public class AppConfig {
                 ? phoneNumber + "_" + recipientPhoneNumber
                 : recipientPhoneNumber + "_" + phoneNumber;
     }
+
+    public static String checkAndAddCCToNumber(String numberToFormat){
+        return  numberToFormat.length() == 9 && containsOnlyDigits(numberToFormat) ? "+48" + numberToFormat : numberToFormat;
+    }
+    private static boolean containsOnlyDigits(String str) {
+        return str.matches("\\d+");
+    }
 }

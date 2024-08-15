@@ -32,6 +32,8 @@ import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.QuerySnapshot;
 
+import com.google.android.material.floatingactionbutton.FloatingActionButton;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -50,11 +52,11 @@ public class MainActivity extends AppCompatActivity {
     private ExecutorService executorService;
     private FirebaseFirestore firestore;
     private String phoneNumber; // Store the device's phone number
+    private FloatingActionButton fabAdd;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
         // Initialize Firebase
         FirebaseApp.initializeApp(this);
         firestore = FirebaseFirestore.getInstance();
@@ -89,6 +91,17 @@ public class MainActivity extends AppCompatActivity {
         }
 
         setContentView(R.layout.main_activity);
+
+        // Initialize the FloatingActionButton
+        fabAdd = findViewById(R.id.fab_add);
+        fabAdd.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Intent intent = new Intent(MainActivity.this, AddConversationActivity.class);
+                startActivity(intent);
+            }
+        });
+
         setupActionBar();
         setupRecyclerView();
     }

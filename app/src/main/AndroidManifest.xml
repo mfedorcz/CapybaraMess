@@ -42,5 +42,6 @@ package="com.example.capybaramess">
     <activity android:name=".SettingsActivity"/>
     <activity android:name=".LoginActivity"/>
     <activity android:name=".WelcomeActivity"/>
+    <activity android:name=".AddConversationActivity"/>
 </application>
 </manifest>

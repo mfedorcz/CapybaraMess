@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/welcomeLayout"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fillViewport="true"
+    tools:context=".AddConversationActivity">
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:padding="30dp">
+
+    <Space
+        android:id="@+id/Space1"
+        android:layout_width="match_parent"
+        android:layout_height="20dp" />
+
+    <TextView
+        android:id="@+id/Header"
+        android:layout_below="@+id/Space1"
+        android:layout_centerHorizontal="true"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="-2dp"
+        android:text="@string/connect_with_your_friend"
+        android:textSize="25sp"
+        android:textColor="@color/colorOnPrimary"
+        android:textStyle="bold" />
+
+    <Space
+        android:id="@+id/Space2"
+        android:layout_below="@+id/Header"
+        android:layout_width="match_parent"
+        android:layout_height="30dp" />
+
+    <TextView
+        android:id="@+id/BodyText"
+        android:layout_below="@+id/Space2"
+        android:text="@string/invite_someone_to_chat_with_you_by_sending_first_message"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_centerHorizontal="true"
+        android:textSize="20sp"
+        android:textColor="@color/colorOnPrimary"
+        android:gravity="center" />
+
+    <Space
+        android:id="@+id/Space3"
+        android:layout_below="@+id/BodyText"
+        android:layout_width="match_parent"
+        android:layout_height="30dp" />
+
+    <EditText
+        android:id="@+id/destinationField"
+        android:layout_below="@id/Space3"
+        android:layout_width="match_parent"
+        android:layout_height="43dp"
+        android:background="@drawable/input_field_background"
+        android:paddingStart="20dp"
+        android:paddingEnd="10dp"
+        android:ems="10"
+        android:maxLength="20"
+        android:hint="Username or number"
+        android:textSize="16sp"
+        android:inputType="text"
+        android:imeOptions="actionDone"/>
+    <Space
+        android:id="@+id/Space4"
+        android:layout_below="@+id/destinationField"
+        android:layout_width="match_parent"
+        android:layout_height="15dp" />
+
+    <EditText
+        android:id="@+id/message"
+        android:layout_below="@id/Space4"
+        android:layout_width="match_parent"
+        android:layout_height="150dp"
+        android:background="@drawable/input_field_background"
+        android:padding="16dp"
+        android:gravity="start|top"
+        android:hint="Message"
+        android:textSize="16sp"
+        android:maxLength="300"
+        android:inputType="textMultiLine"
+        android:scrollbars="vertical" />
+
+    <Space
+        android:id="@+id/Space5"
+        android:layout_below="@+id/message"
+        android:layout_width="match_parent"
+        android:layout_height="15dp" />
+
+    <androidx.appcompat.widget.AppCompatButton
+        android:id="@+id/continueButton"
+        android:layout_below="@id/Space5"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Send invitation"
+        android:textColor="@color/colorSecondary"
+        android:textAllCaps="false"
+        android:textSize="16sp"
+        android:background="@drawable/button1_background"/>
+    </RelativeLayout>
+</ScrollView>

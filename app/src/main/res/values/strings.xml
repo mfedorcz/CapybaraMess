@@ -3,4 +3,8 @@
     <string name="back_button_description">Go back.</string>
     <string name="send_message_field">Type a message...</string>
     <string name="settings">Settings to customize experience.</string>
+    <string name="add_contact">Add a new conversation.</string>
+    <string name="action_bar_add_conv_title">Add new chat</string>
+    <string name="connect_with_your_friend">Connect with your friend</string>
+    <string name="invite_someone_to_chat_with_you_by_sending_first_message">Invite someone to chat with you by sending first message!</string>
 </resources>
