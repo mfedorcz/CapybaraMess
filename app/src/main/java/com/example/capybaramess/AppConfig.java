@@ -1,5 +1,7 @@
 package com.example.capybaramess;
 
+import android.util.Log;
+
 public class AppConfig {
     private static String phoneNumber;
 
@@ -20,6 +22,10 @@ public class AppConfig {
     }
 
     public static String checkAndAddCCToNumber(String numberToFormat){
+        if (phoneNumber == null || phoneNumber.isEmpty()) {
+            Log.w("AppConfig", "Phone number is null or empty.");
+            return null;
+        }
         return  numberToFormat.length() == 9 && containsOnlyDigits(numberToFormat) ? "+48" + numberToFormat : numberToFormat;
     }
     private static boolean containsOnlyDigits(String str) {

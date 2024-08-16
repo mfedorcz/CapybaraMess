@@ -3,6 +3,8 @@ package com.example.capybaramess;
 import android.os.Parcel;
 import android.os.Parcelable;
 
+import java.util.Objects;
+
 public class Contact implements Parcelable {
     private String name;
     private String snippet;
@@ -117,6 +119,23 @@ public class Contact implements Parcelable {
 
     public void setRegistered(boolean registered) {
         isRegistered = registered;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Contact contact = (Contact) o;
+        return threadId == contact.threadId &&
+                timestamp == contact.timestamp &&
+                Objects.equals(name, contact.name) &&
+                Objects.equals(snippet, contact.snippet) &&
+                Objects.equals(profileImage, contact.profileImage);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(threadId, name, snippet, profileImage, timestamp);
     }
 
 }

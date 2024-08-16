@@ -13,6 +13,10 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.request.RequestOptions;
 
+import androidx.recyclerview.widget.DiffUtil;
+
+import java.util.Arrays;
+
 public class ContactsAdapter extends RecyclerView.Adapter<ContactsAdapter.ViewHolder> {
 
     private Context mContext;
@@ -44,8 +48,12 @@ public class ContactsAdapter extends RecyclerView.Adapter<ContactsAdapter.ViewHo
     }
 
     // Method to set the contacts list
-    public void setContacts(Contact[] contacts) {
-        this.mContacts = contacts;
+    public void setContacts(Contact[] newContacts) {
+        ContactDiffCallback diffCallback = new ContactDiffCallback(Arrays.asList(this.mContacts), Arrays.asList(newContacts));
+        DiffUtil.DiffResult diffResult = DiffUtil.calculateDiff(diffCallback);
+
+        this.mContacts = newContacts;
+        diffResult.dispatchUpdatesTo(this);  // Notifies the adapter of the changes
     }
 
     @Override
@@ -99,5 +107,8 @@ public class ContactsAdapter extends RecyclerView.Adapter<ContactsAdapter.ViewHo
     @Override
     public int getItemCount() {
         return mContacts.length;
+    }
+    public Contact[] getContacts() {
+        return mContacts;
     }
 }

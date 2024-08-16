@@ -35,17 +35,20 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 public class MainActivity extends AppCompatActivity {
 
     private RecyclerView contactsRecyclerView;
     private FloatingActionButton fabAdd;
     private SmsObserver smsObserver;
-    private ExecutorService executorService;
+    private ScheduledExecutorService executorService;
     private FirebaseFirestore firestore;
     private String phoneNumber;
+    private Map<String, Contact> firebaseCache = new HashMap<>(); // Cache for Firebase data
+    private Map<String, Integer> contactPositionMap = new HashMap<>(); // Cache for contact positions
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -92,7 +95,7 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        executorService.shutdown();
+        shutdownExecutorService();
     }
 
     private void initializeFirebase() {
@@ -101,7 +104,21 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void initializeExecutorService() {
-        executorService = Executors.newSingleThreadExecutor();
+        executorService = Executors.newScheduledThreadPool(4); // 4 threads for concurrency
+    }
+
+    private void shutdownExecutorService() {
+        if (executorService != null && !executorService.isShutdown()) {
+            executorService.shutdown();
+            try {
+                if (!executorService.awaitTermination(60, TimeUnit.SECONDS)) {
+                    executorService.shutdownNow();
+                }
+            } catch (InterruptedException e) {
+                executorService.shutdownNow();
+                Thread.currentThread().interrupt();
+            }
+        }
     }
 
     private void initializePhoneNumber() {
@@ -239,7 +256,7 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
         } catch (Exception e) {
-            Log.e("SMSQuery", "Error fetching SMS conversations", e);
+            Log.e("SMSQuery", "Error fetching SMS conversations: " + e.getMessage(), e);
         }
 
         return conversationMap;
@@ -261,6 +278,13 @@ public class MainActivity extends AppCompatActivity {
 
                             if (otherParticipant != null) {
                                 String normalizedParticipant = AppConfig.checkAndAddCCToNumber(otherParticipant);
+
+                                // Check cache first
+                                if (firebaseCache.containsKey(normalizedParticipant)) {
+                                    updateUI(conversationMap);
+                                    continue;
+                                }
+
                                 String name = getContactName(normalizedParticipant);
 
                                 Contact matchingContact = conversationMap.values().stream()
@@ -288,17 +312,17 @@ public class MainActivity extends AppCompatActivity {
                                     fetchProfileImageAndUsernameFromFirebase(contact);
                                     conversationMap.put(contact.getThreadId(), contact);
                                 }
+                                // Cache the fetched contact
+                                firebaseCache.put(normalizedParticipant, matchingContact);
                             }
                         }
-
                         updateUI(conversationMap);
 
                     } else {
-                        Log.e("FirebaseQuery", "Failed to fetch Firebase conversations", task.getException());
+                        Log.e("FirebaseQuery", "Failed to fetch Firebase conversations: " + (task.getException() != null ? task.getException().getMessage() : "Unknown error"));
                     }
                 });
     }
-
 
     private void updateUI(Map<Long, Contact> conversationMap) {
         List<Contact> sortedContacts = new ArrayList<>(conversationMap.values());
@@ -308,8 +332,7 @@ public class MainActivity extends AppCompatActivity {
             ContactsAdapter adapter = (ContactsAdapter) contactsRecyclerView.getAdapter();
             if (adapter != null) {
                 Contact[] contactsArray = sortedContacts.toArray(new Contact[0]);
-                adapter.setContacts(contactsArray);
-                adapter.notifyDataSetChanged();
+                adapter.setContacts(contactsArray);  // This will use DiffUtil to update the RecyclerView efficiently
             }
         });
     }
@@ -335,11 +358,30 @@ public class MainActivity extends AppCompatActivity {
                 contact.setSnippet(formatSnippet(snippet, smsType));
                 contact.setTimestamp(smsTimestamp);
             }
+        } catch (Exception e) {
+            Log.e("SMSQuery", "Error fetching SMS snippet: " + e.getMessage(), e);
         }
     }
 
     private void fetchProfileImageAndUsernameFromFirebase(Contact contact) {
         String phoneNumber = AppConfig.checkAndAddCCToNumber(contact.getAddress());
+
+        // Check if data is already cached
+        if (firebaseCache.containsKey(phoneNumber)) {
+            Contact cachedContact = firebaseCache.get(phoneNumber);
+            contact.setProfileImage(cachedContact.getProfileImage());
+            contact.setName(cachedContact.getName());
+            runOnUiThread(() -> {
+                ContactsAdapter adapter = (ContactsAdapter) contactsRecyclerView.getAdapter();
+                if (adapter != null) {
+                    int position = findContactPosition(contact);
+                    if (position != RecyclerView.NO_POSITION) {
+                        adapter.notifyItemChanged(position);
+                    }
+                }
+            });
+            return;
+        }
 
         firestore.collection("users")
                 .whereEqualTo("phoneNumber", phoneNumber)
@@ -348,13 +390,51 @@ public class MainActivity extends AppCompatActivity {
                     if (!querySnapshot.isEmpty()) {
                         String profileImageUrl = querySnapshot.getDocuments().get(0).getString("profileImageUrl");
                         String profileUsername = querySnapshot.getDocuments().get(0).getString("username");
+
+                        boolean dataChanged = false;
+
                         if (profileImageUrl != null && !profileImageUrl.isEmpty()) {
                             contact.setProfileImage(profileImageUrl);
+                            dataChanged = true;
                         }
-                        contact.setName(profileUsername);
+                        if (profileUsername != null && !profileUsername.isEmpty()) {
+                            contact.setName(profileUsername);
+                            dataChanged = true;
+                        }
+
+                        if (dataChanged) {
+                            firebaseCache.put(phoneNumber, contact); // Cache the fetched data
+                            runOnUiThread(() -> {
+                                ContactsAdapter adapter = (ContactsAdapter) contactsRecyclerView.getAdapter();
+                                if (adapter != null) {
+                                    int position = findContactPosition(contact);
+                                    if (position != RecyclerView.NO_POSITION) {
+                                        adapter.notifyItemChanged(position);
+                                    }
+                                }
+                            });
+                        }
                     }
                 })
-                .addOnFailureListener(e -> Log.e("FirebaseQuery", "Failed to fetch profile info for " + phoneNumber, e));
+                .addOnFailureListener(e -> Log.e("FirebaseQuery", "Failed to fetch profile info for " + phoneNumber + ": " + e.getMessage(), e));
+    }
+
+    private int findContactPosition(Contact contact) {
+        // Use the cached map for quick position lookup
+        if (contactPositionMap.containsKey(contact.getAddress())) {
+            return contactPositionMap.get(contact.getAddress());
+        }
+
+        ContactsAdapter adapter = (ContactsAdapter) contactsRecyclerView.getAdapter();
+        if (adapter != null) {
+            for (int i = 0; i < adapter.getItemCount(); i++) {
+                if (adapter.getContacts()[i].getAddress().equals(contact.getAddress())) {
+                    contactPositionMap.put(contact.getAddress(), i); // Cache the position
+                    return i;
+                }
+            }
+        }
+        return RecyclerView.NO_POSITION;
     }
 
     private String formatSnippet(String snippet, int type) {
@@ -381,6 +461,8 @@ public class MainActivity extends AppCompatActivity {
             if (cursor != null && cursor.moveToFirst()) {
                 contactName = cursor.getString(0);
             }
+        } catch (Exception e) {
+            Log.e("ContactQuery", "Error fetching contact name for " + phoneNumber + ": " + e.getMessage(), e);
         }
 
         return contactName != null ? contactName : phoneNumber;
