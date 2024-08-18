@@ -16,6 +16,7 @@ import android.telephony.TelephonyManager;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
+import android.widget.ImageView;
 import android.widget.TextView;
 
 import androidx.appcompat.app.AppCompatActivity;
@@ -62,16 +63,16 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
 
-        initializePhoneNumber();
-        if (!isPhoneNumberValid()) {
-            return;
-        }
 
         if (!isUserSignedIn()) {
             redirectToRegistration();
             return;
         }
-
+        
+        initializePhoneNumber();
+        if (!isPhoneNumberValid()) {
+            return;
+        }
         setContentView(R.layout.main_activity);
 
         initializeUIComponents();
@@ -144,6 +145,14 @@ public class MainActivity extends AppCompatActivity {
         TextView titleText = customView.findViewById(R.id.actionbar_title);
         titleText.setText("Chats");
         getSupportActionBar().setCustomView(customView);
+
+        ImageView settingsButton = findViewById(R.id.actionbar_settings);
+        settingsButton.setVisibility(View.VISIBLE);  //Make the settings button visible
+        settingsButton.setOnClickListener(v -> {
+            // Start the SettingsActivity
+            Intent intent = new Intent(MainActivity.this, SettingsActivity.class);
+            startActivity(intent);
+        });
     }
 
     private void setupRecyclerView() {
