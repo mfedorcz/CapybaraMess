@@ -129,8 +129,7 @@ public class ConversationActivity extends AppCompatActivity {
                         ChatMessage.MessagePlatform.SMS //MessagePlatform default to SMS
                 );
 
-                // Adding message to the list and notify the adapter
-                updateUIWithNewMessage(newMessage);
+
 
                 // Clear the input field
                 messageEditText.setText("");
@@ -140,6 +139,8 @@ public class ConversationActivity extends AppCompatActivity {
                     ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.SEND_SMS}, REQUEST_SEND_SMS);
                 } else {
                     sendMessage(newMessage);
+                    // Adding message to the list and notify the adapter
+                    updateUIWithNewMessage(newMessage);
                 }
             }
         });
@@ -223,6 +224,7 @@ public class ConversationActivity extends AppCompatActivity {
     }
 
     private void sendViaFirebase(ChatMessage message) {
+        message.setPlatform(ChatMessage.MessagePlatform.OTT);
         String conversationId = AppConfig.getConversationId(message.getRecipientId().length() == 9 ? "+48" + message.getRecipientId() : message.getRecipientId());
 
         //Reference to the conversation document
@@ -243,6 +245,7 @@ public class ConversationActivity extends AppCompatActivity {
                 .addOnFailureListener(e -> {
                     Log.e("Firebase", "Failed to send message via Firebase.", e);
                     // Fallback to SMS if Firebase sending fails
+                    message.setPlatform(ChatMessage.MessagePlatform.SMS);
                     sendViaSMS(message);
                 });
 
