@@ -67,6 +67,7 @@ public class ContactsAdapter extends RecyclerView.Adapter<ContactsAdapter.ViewHo
                 Intent intent = new Intent(mContext, ConversationActivity.class);
                 intent.putExtra("contact", contact);
                 intent.putExtra("threadID", contact.getThreadId());
+                intent.putExtra("position", position);
                 mContext.startActivity(intent);
             }
         });

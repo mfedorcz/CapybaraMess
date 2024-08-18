@@ -23,12 +23,15 @@ import android.widget.ImageView;
 import android.widget.TextView;
 import android.Manifest;
 
+import androidx.annotation.ContentView;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.bumptech.glide.Glide;
+import com.bumptech.glide.request.RequestOptions;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.firestore.DocumentReference;
 import com.google.firebase.firestore.DocumentSnapshot;
@@ -57,10 +60,17 @@ public class ConversationActivity extends AppCompatActivity {
     private Contact contact;
     private ExecutorService executorService;
     private String phoneNumber; // Store the device's phone number
+    private final int[] defaultImages = new int[]{
+            R.drawable.default_profile_imgmdpi1,
+            R.drawable.default_profile_imgmdpi2,
+            R.drawable.default_profile_imgmdpi3
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        Intent intent = getIntent();
+
         setContentView(R.layout.conversation_activity);
 
         // Initialize the chatMessages list
@@ -81,7 +91,7 @@ public class ConversationActivity extends AppCompatActivity {
             return;
         }
 
-        // Get contact information (assumes this is passed via the Intent)
+        // Get contact information
         contact = getIntent().getParcelableExtra("contact");
 
         if (contact == null) {
@@ -90,17 +100,10 @@ public class ConversationActivity extends AppCompatActivity {
             return;
         }
 
+
         // Setting up the custom ActionBar
-        getSupportActionBar().setDisplayShowCustomEnabled(true);
-        getSupportActionBar().setDisplayShowTitleEnabled(false);
-        View customView = LayoutInflater.from(this).inflate(R.layout.action_bar_act_conversation, null);
-        getSupportActionBar().setCustomView(customView);
+        setupActionBar();
 
-        TextView titleText = customView.findViewById(R.id.actionbar_title);
-        titleText.setText(contact.getName()); // Setting the contact's name as title
-
-        ImageView backButton = customView.findViewById(R.id.backButton);
-        backButton.setOnClickListener(v -> finish());
 
         messagesRecyclerView = findViewById(R.id.messagesRecyclerView);
         LinearLayoutManager layoutManager = new LinearLayoutManager(this);
@@ -170,7 +173,44 @@ public class ConversationActivity extends AppCompatActivity {
         executorService.shutdown();
     }
 
+    private void setupActionBar() {
+        // Enable custom ActionBar
+        getSupportActionBar().setDisplayShowCustomEnabled(true);
+        getSupportActionBar().setDisplayShowTitleEnabled(false);
 
+        // Inflate the custom view
+        View customView = LayoutInflater.from(this).inflate(R.layout.action_bar_act_conversation, null);
+
+        // Set the custom view to the ActionBar
+        getSupportActionBar().setCustomView(customView);
+
+        // Access views from the custom view and set data
+        TextView titleText = customView.findViewById(R.id.actionbar_title);
+        titleText.setText(contact.getName());
+        titleText.setPadding(40,0,0,0);
+
+        ImageView backButton = customView.findViewById(R.id.backButton);
+        backButton.setOnClickListener(v -> finish());
+
+        ImageView profileImageView = customView.findViewById(R.id.profileImageView);
+        int position = getIntent().getIntExtra("position", 0);
+        RequestOptions options = new RequestOptions()
+                .circleCrop()
+                .placeholder(defaultImages[position % defaultImages.length])
+                .error(defaultImages[position % defaultImages.length]);
+
+        if (contact.isRegistered() && contact.getProfileImage() != null && !contact.getProfileImage().isEmpty()) {
+            Glide.with(this)
+                    .load(contact.getProfileImage())
+                    .apply(options)
+                    .into(profileImageView);
+        } else {
+            Glide.with(this)
+                    .load(defaultImages[position % defaultImages.length])
+                    .apply(options)
+                    .into(profileImageView);
+        }
+    }
     private void initializeSmsReceiver() {
         smsReceiver = new BroadcastReceiver() {
             @Override
