@@ -31,6 +31,7 @@ import com.google.firebase.FirebaseApp;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.ListenerRegistration;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -56,6 +57,8 @@ public class MainActivity extends AppCompatActivity {
     private Map<String, Integer> contactPositionMap = new HashMap<>(); // Cache for contact positions
     private Map<Long, Contact> cachedConversationMap; // In-memory cache for conversations
     private boolean isFirstResume = true;
+    private List<ListenerRegistration> firebaseListenerRegistrations = new ArrayList<>();
+
 
 
     @Override
@@ -238,7 +241,7 @@ public class MainActivity extends AppCompatActivity {
         String currentPhoneNumber = AppConfig.checkAndAddCCToNumber(AppConfig.getPhoneNumber());
 
         // Listening to changes in conversations involving the current user
-        firestore.collection("conversations")
+        ListenerRegistration conversationListener = firestore.collection("conversations")
                 .whereArrayContains("participants", currentPhoneNumber)
                 .addSnapshotListener((snapshots, e) -> {
                     if (e != null) {
@@ -272,11 +275,12 @@ public class MainActivity extends AppCompatActivity {
                         }); //TODO change this so it only add/refreshes/deletes for specific conversation.
                     }
                 });
+        firebaseListenerRegistrations.add(conversationListener);
     }
 
     private void registerParticipantProfileListeners(List<String> participantPhoneNumbers) {
         for (String participantPhoneNumber : participantPhoneNumbers) {
-            firestore.collection("users")
+            ListenerRegistration participantListener = firestore.collection("users")
                     .whereEqualTo("phoneNumber", participantPhoneNumber)
                     .addSnapshotListener((snapshots, e) -> {
                         if (e != null) {
@@ -318,11 +322,16 @@ public class MainActivity extends AppCompatActivity {
                             }
                         }
                     });
+            firebaseListenerRegistrations.add(participantListener);
         }
     }
 
     private void unregisterFirebaseObservers() {
-        //For Firestore, the listeners are cleaned up automatically if not stored.
+        Log.d(TAG, "unregisterFirebaseObservers: Unregistering Firebase observers.");
+        for (ListenerRegistration registration : firebaseListenerRegistrations) {
+            registration.remove();
+        }
+        firebaseListenerRegistrations.clear(); // Clear the list after removing all listeners
     }
     private void registerObservers() {
         Log.d(TAG, "registerObservers: Registering all observers.");
