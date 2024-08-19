@@ -13,4 +13,8 @@
     <color name="colorOnSecondary">#000000</color>
     <color name="colorOutline">#E0E0E0</color>
     <color name="colorSecondaryElement">#D3D3D3</color>
+    <color name="colorTrackUnchecked">#BABABA</color>
+    <color name="colorTrackChecked">#393939</color>
+    <color name="colorButtonUnchecked">#7A7A7A</color>
+    <color name="colorButtonChecked">#393939</color>
 </resources>

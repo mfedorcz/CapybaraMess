@@ -6,6 +6,7 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
+import android.graphics.Typeface;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.net.Uri;
@@ -25,6 +26,7 @@ import android.Manifest;
 
 import androidx.annotation.ContentView;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.SwitchCompat;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
@@ -65,6 +67,8 @@ public class ConversationActivity extends AppCompatActivity {
             R.drawable.default_profile_imgmdpi2,
             R.drawable.default_profile_imgmdpi3
     };
+
+    private boolean isOTTMode = false; // Default to SMS mode
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -210,6 +214,23 @@ public class ConversationActivity extends AppCompatActivity {
                     .apply(options)
                     .into(profileImageView);
         }
+
+        //Setup slider
+        SwitchCompat modeSwitch = findViewById(R.id.switch_mode);
+        TextView modeText = findViewById(R.id.text_mode);
+        modeText.setText("SMS");
+
+        // Set listener for the switch
+        modeSwitch.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            isOTTMode = isChecked;
+            if (isChecked) {
+                modeText.setText("OTT");
+                modeText.setTypeface(null, Typeface.BOLD);
+            } else {
+                modeText.setText("SMS");
+                modeText.setTypeface(null, Typeface.NORMAL);
+            }
+        });
     }
     private void initializeSmsReceiver() {
         smsReceiver = new BroadcastReceiver() {
@@ -256,7 +277,8 @@ public class ConversationActivity extends AppCompatActivity {
     }
 
     private void sendMessage(ChatMessage message) {
-        if (contact.isRegistered() && isNetworkAvailable()) {
+        //if (contact.isRegistered() && isNetworkAvailable()) {
+        if(isOTTMode){
             executorService.execute(() -> sendViaFirebase(message));
         } else {
             sendViaSMS(message);
