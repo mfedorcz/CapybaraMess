@@ -17,12 +17,14 @@ import android.telephony.SmsMessage;
 import android.telephony.TelephonyManager;
 import android.util.Log;
 import android.view.LayoutInflater;
+import android.view.MotionEvent;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.Manifest;
+import android.widget.Toast;
 
 import androidx.annotation.ContentView;
 import androidx.appcompat.app.AppCompatActivity;
@@ -55,6 +57,7 @@ public class ConversationActivity extends AppCompatActivity {
     private EditText messageEditText;
     private Button sendButton;
     private RecyclerView messagesRecyclerView;
+    private BroadcastReceiver networkChangeReceiver;
     private List<ChatMessage> chatMessages;
     private MessagesAdapter adapter;
     private BroadcastReceiver smsReceiver;
@@ -69,6 +72,8 @@ public class ConversationActivity extends AppCompatActivity {
     };
 
     private boolean isOTTMode = false; // Default to SMS mode
+    private SwitchCompat modeSwitch;
+    private TextView modeText;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -107,64 +112,12 @@ public class ConversationActivity extends AppCompatActivity {
 
         // Setting up the custom ActionBar
         setupActionBar();
-
-
-        messagesRecyclerView = findViewById(R.id.messagesRecyclerView);
-        LinearLayoutManager layoutManager = new LinearLayoutManager(this);
-        layoutManager.setStackFromEnd(true);  // Start the layout from the bottom
-        messagesRecyclerView.setLayoutManager(layoutManager);
-
-        // Initialize the adapter with the chatMessages list
-        adapter = new MessagesAdapter(this, chatMessages);
-        messagesRecyclerView.setAdapter(adapter);
-
-        setupRealTimeUpdates();
-
-        messageEditText = findViewById(R.id.messageEditText);
-        sendButton = findViewById(R.id.sendButton);
-
-        sendButton.setOnClickListener(v -> {
-            String messageText = messageEditText.getText().toString().trim();
-            if (!messageText.isEmpty()) {
-                // Create a new ChatMessage object
-                ChatMessage newMessage = new ChatMessage(
-                        phoneNumber,  // Sender ID is the device's phone number
-                        contact.getAddress(),  // Address of the recipient
-                        messageText,
-                        System.currentTimeMillis(),
-                        ChatMessage.MessageType.OUTGOING,  //MessageType default set to OUTGOING
-                        ChatMessage.MessagePlatform.SMS //MessagePlatform default to SMS
-                );
-
-
-
-                // Clear the input field
-                messageEditText.setText("");
-
-                // Check permission and send the message
-                if (ContextCompat.checkSelfPermission(this, Manifest.permission.SEND_SMS) != PackageManager.PERMISSION_GRANTED) {
-                    ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.SEND_SMS}, REQUEST_SEND_SMS);
-                } else {
-                    sendMessage(newMessage);
-                    // Adding message to the list and notify the adapter
-                    updateUIWithNewMessage(newMessage);
-                }
-            }
-        });
-
-
-        // Retrieving the threadId from the intent
-        long threadId = contact.getThreadId();
-        // Fetching and showing messages if a valid threadId is provided
-        if (threadId != -1) {
-            chatMessages.addAll(fetchMessages(threadId)); // Fetching messages for the given threadId
-            // Fetch Firebase messages and merge them with SMS messages
-            fetchMessagesFromFirebase();
-            adapter.notifyDataSetChanged(); // Notify adapter that data has changed
-        } else {
-            Log.e("ConversationActivity", "Invalid threadId passed to ConversationActivity");
-        }
-
+        // Setting up Chat
+        setupChat();
+        // Register the network change receiver
+        networkChangeReceiver = new NetworkChangeReceiver(this, modeSwitch, modeText, contact);
+        IntentFilter filter = new IntentFilter(ConnectivityManager.CONNECTIVITY_ACTION);
+        registerReceiver(networkChangeReceiver, filter);
         // Initialize BroadcastReceiver
         initializeSmsReceiver();
         registerReceiver(smsReceiver, new IntentFilter("android.provider.Telephony.SMS_RECEIVED"));
@@ -173,10 +126,12 @@ public class ConversationActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        if (networkChangeReceiver != null) {
+            unregisterReceiver(networkChangeReceiver);
+        }
         unregisterReceiver(smsReceiver);
         executorService.shutdown();
     }
-
     private void setupActionBar() {
         // Enable custom ActionBar
         getSupportActionBar().setDisplayShowCustomEnabled(true);
@@ -216,22 +171,42 @@ public class ConversationActivity extends AppCompatActivity {
         }
 
         //Setup slider
-        SwitchCompat modeSwitch = findViewById(R.id.switch_mode);
-        TextView modeText = findViewById(R.id.text_mode);
+        setupSlider();
+    }
+    private void setupSlider() {
+        modeSwitch = findViewById(R.id.switch_mode);
+        modeText = findViewById(R.id.text_mode);
         modeText.setText("SMS");
 
-        // Set listener for the switch
-        modeSwitch.setOnCheckedChangeListener((buttonView, isChecked) -> {
-            isOTTMode = isChecked;
-            if (isChecked) {
-                modeText.setText("OTT");
-                modeText.setTypeface(null, Typeface.BOLD);
-            } else {
-                modeText.setText("SMS");
-                modeText.setTypeface(null, Typeface.NORMAL);
-            }
-        });
+        // Determine if OTT mode can be used
+        boolean canUseOTT = isNetworkAvailable() && contact.isRegistered();
+
+        if (!canUseOTT) {
+            // Intercept touch events to prevent the switch from toggling
+            modeSwitch.setOnTouchListener((v, event) -> {
+                if (event.getAction() == MotionEvent.ACTION_UP) { // Detect the release of the touch
+                    // Show the toast message when the switch is touched
+                    Toast.makeText(this, !isNetworkAvailable() ? "Network is not available. SMS only" : "Contact is not registered in the server. SMS only.", Toast.LENGTH_SHORT).show();
+                }
+                return true; // Consume the touch event, preventing the switch from changing state
+            });
+        } else {
+            // Allow the switch to change state and update the UI accordingly
+            modeSwitch.setOnCheckedChangeListener((buttonView, isChecked) -> {
+                isOTTMode = isChecked;
+                if (isChecked) {
+                    modeText.setText("OTT");
+                    modeText.setTypeface(null, Typeface.BOLD);
+                } else {
+                    modeText.setText("SMS");
+                    modeText.setTypeface(null, Typeface.NORMAL);
+                }
+            });
+            modeSwitch.setChecked(true);
+        }
     }
+
+
     private void initializeSmsReceiver() {
         smsReceiver = new BroadcastReceiver() {
             @Override
@@ -264,7 +239,56 @@ public class ConversationActivity extends AppCompatActivity {
             }
         };
     }
+    private void setupChat(){
+        messagesRecyclerView = findViewById(R.id.messagesRecyclerView);
+        LinearLayoutManager layoutManager = new LinearLayoutManager(this);
+        layoutManager.setStackFromEnd(true);  // Start the layout from the bottom
+        messagesRecyclerView.setLayoutManager(layoutManager);
+        // Initialize the adapter with the chatMessages list
+        adapter = new MessagesAdapter(this, chatMessages);
+        messagesRecyclerView.setAdapter(adapter);
 
+        setupRealTimeUpdates();
+
+        messageEditText = findViewById(R.id.messageEditText);
+        sendButton = findViewById(R.id.sendButton);
+
+        sendButton.setOnClickListener(v -> {
+            String messageText = messageEditText.getText().toString().trim();
+            if (!messageText.isEmpty()) {
+                // Create a new ChatMessage object
+                ChatMessage newMessage = new ChatMessage(
+                        phoneNumber,  // Sender ID is the device's phone number
+                        contact.getAddress(),  // Address of the recipient
+                        messageText,
+                        System.currentTimeMillis(),
+                        ChatMessage.MessageType.OUTGOING,  //MessageType default set to OUTGOING
+                        ChatMessage.MessagePlatform.SMS //MessagePlatform default to SMS
+                );
+                // Clear the input field
+                messageEditText.setText("");
+                // Check permission and send the message
+                if (ContextCompat.checkSelfPermission(this, Manifest.permission.SEND_SMS) != PackageManager.PERMISSION_GRANTED) {
+                    ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.SEND_SMS}, REQUEST_SEND_SMS);
+                } else {
+                    sendMessage(newMessage);
+                    // Adding message to the list and notify the adapter
+                    updateUIWithNewMessage(newMessage);
+                }
+            }
+        });
+        // Retrieving the threadId from the intent
+        long threadId = contact.getThreadId();
+        // Fetching and showing messages if a valid threadId is provided
+        if (threadId != -1) {
+            chatMessages.addAll(fetchMessages(threadId)); // Fetching messages for the given threadId
+            // Fetch Firebase messages and merge them with SMS messages
+            fetchMessagesFromFirebase();
+            adapter.notifyDataSetChanged(); // Notify adapter that data has changed
+        } else {
+            Log.e("ConversationActivity", "Invalid threadId passed to ConversationActivity");
+        }
+    }
     private void updateUIWithNewMessage(ChatMessage message) {
         runOnUiThread(() -> {
             if (!chatMessages.contains(message)) {  // Check for duplicates
@@ -277,7 +301,6 @@ public class ConversationActivity extends AppCompatActivity {
     }
 
     private void sendMessage(ChatMessage message) {
-        //if (contact.isRegistered() && isNetworkAvailable()) {
         if(isOTTMode){
             executorService.execute(() -> sendViaFirebase(message));
         } else {
@@ -307,6 +330,7 @@ public class ConversationActivity extends AppCompatActivity {
                 .addOnFailureListener(e -> {
                     Log.e("Firebase", "Failed to send message via Firebase.", e);
                     // Fallback to SMS if Firebase sending fails
+                    modeSwitch.toggle();
                     message.setPlatform(ChatMessage.MessagePlatform.SMS);
                     sendViaSMS(message);
                 });
@@ -436,4 +460,57 @@ public class ConversationActivity extends AppCompatActivity {
                     }
                 });
     }
+    public class NetworkChangeReceiver extends BroadcastReceiver {
+
+        private final SwitchCompat modeSwitch;
+        private final TextView modeText;
+        private final Context context;
+        private final Contact contact;
+
+        public NetworkChangeReceiver(Context context, SwitchCompat modeSwitch, TextView modeText, Contact contact) {
+            this.context = context;
+            this.modeSwitch = modeSwitch;
+            this.modeText = modeText;
+            this.contact = contact;
+        }
+
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if (ConnectivityManager.CONNECTIVITY_ACTION.equals(intent.getAction())) {
+                boolean canUseOTT = isNetworkAvailable() && contact.isRegistered();
+
+                if (!canUseOTT) {
+                    modeSwitch.setChecked(false);
+                    modeSwitch.setOnTouchListener((v, event) -> {
+                        if (event.getAction() == MotionEvent.ACTION_UP) {
+                            Toast.makeText(context, !isNetworkAvailable() ? "Network is not available. SMS only." : "Contact is not registered. SMS only.", Toast.LENGTH_SHORT).show();
+                        }
+                        return true;
+                    });
+                    modeText.setText("SMS");
+                    modeText.setTypeface(null, Typeface.NORMAL);
+                } else {
+                    modeSwitch.setOnTouchListener(null);  // Remove the touch listener so the switch can change state
+                    modeSwitch.setOnCheckedChangeListener((buttonView, isChecked) -> {
+                        isOTTMode = isChecked;
+                        if (isChecked) {
+                            modeText.setText("OTT");
+                            modeText.setTypeface(null, Typeface.BOLD);
+                        } else {
+                            modeText.setText("SMS");
+                            modeText.setTypeface(null, Typeface.NORMAL);
+                        }
+                    });
+                    modeSwitch.setChecked(true);
+                }
+            }
+        }
+
+        private boolean isNetworkAvailable() {
+            ConnectivityManager connectivityManager = (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
+            NetworkInfo activeNetworkInfo = connectivityManager.getActiveNetworkInfo();
+            return activeNetworkInfo != null && activeNetworkInfo.isConnected();
+        }
+    }
+
 }
