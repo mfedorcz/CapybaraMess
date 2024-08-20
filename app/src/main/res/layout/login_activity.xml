@@ -48,7 +48,7 @@
         android:background="@drawable/input_field_background"
         android:paddingStart="20dp"
         android:ems="10"
-        android:hint="+1 (555) 555-5555"
+        android:hint="+48 888 888 888"
         android:textSize="16sp"
         android:inputType="phone" />
 
