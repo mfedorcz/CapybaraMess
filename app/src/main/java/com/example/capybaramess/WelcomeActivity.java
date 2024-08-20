@@ -1,13 +1,20 @@
 package com.example.capybaramess;
 
+import android.app.AlertDialog;
+import android.app.Dialog;
 import android.content.Intent;
+import android.graphics.drawable.ColorDrawable;
 import android.os.Bundle;
 import android.text.InputFilter;
+import android.view.LayoutInflater;
+import android.view.View;
 import android.widget.EditText;
+import android.widget.ImageView;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 
+import com.bumptech.glide.Glide;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.auth.UserProfileChangeRequest;
@@ -21,6 +28,7 @@ public class WelcomeActivity extends AppCompatActivity {
     private EditText usernameField, realNameField, emailField, bioField;
     private FirebaseAuth mAuth;
     private FirebaseFirestore firestore;
+    private Dialog loadingDialog;
 
     private int usernameCharLimit = 20;
     private int realNameCharLimit = 20;
@@ -63,6 +71,7 @@ public class WelcomeActivity extends AppCompatActivity {
 
         FirebaseUser user = mAuth.getCurrentUser();
         if (user != null) {
+            showLoadingScreen(); // Show loading screen when the operation starts
             String phoneNumber = user.getPhoneNumber(); // Get phone number from FirebaseUser
             saveUserProfileData(user.getUid(), username, realName, email, bio, phoneNumber);
         }
@@ -85,6 +94,7 @@ public class WelcomeActivity extends AppCompatActivity {
                     updateFirebaseUserProfile(realName, username);
                 })
                 .addOnFailureListener(e -> {
+                    dismissLoadingScreen(); // Dismiss loading screen on failure
                     Toast.makeText(WelcomeActivity.this, "Failed to save profile", Toast.LENGTH_SHORT).show();
                 });
     }
@@ -101,6 +111,7 @@ public class WelcomeActivity extends AppCompatActivity {
 
             user.updateProfile(profileUpdates)
                     .addOnCompleteListener(task -> {
+                        dismissLoadingScreen();
                         if (task.isSuccessful()) {
                             startMainActivity();
                         } else {
@@ -115,5 +126,35 @@ public class WelcomeActivity extends AppCompatActivity {
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
         startActivity(intent);
         finish();
+    }
+
+    private void showLoadingScreen() {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setCancelable(false);
+
+        LayoutInflater inflater = this.getLayoutInflater();
+        View dialogView = inflater.inflate(R.layout.dialog_loading, null);
+
+        ImageView loadingImageView = dialogView.findViewById(R.id.loading_image);
+        Glide.with(this)
+                .asGif()
+                .load(R.drawable.loading_animation) // Replace with your GIF drawable
+                .into(loadingImageView);
+
+        builder.setView(dialogView);
+
+        loadingDialog = builder.create();
+
+        if (loadingDialog.getWindow() != null) {
+            loadingDialog.getWindow().setBackgroundDrawable(new ColorDrawable(android.graphics.Color.TRANSPARENT));
+        }
+
+        loadingDialog.show();
+    }
+
+    private void dismissLoadingScreen() {
+        if (loadingDialog != null && loadingDialog.isShowing()) {
+            loadingDialog.dismiss();
+        }
     }
 }

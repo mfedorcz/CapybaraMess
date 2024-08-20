@@ -1,7 +1,10 @@
 package com.example.capybaramess;
 
+import android.app.AlertDialog;
+import android.app.Dialog;
 import android.content.Intent;
 import android.graphics.Color;
+import android.graphics.drawable.ColorDrawable;
 import android.net.Uri;
 import android.os.Bundle;
 import android.text.SpannableString;
@@ -10,14 +13,17 @@ import android.text.TextPaint;
 import android.text.TextUtils;
 import android.text.method.LinkMovementMethod;
 import android.text.style.ClickableSpan;
+import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.EditText;
+import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 
+import com.bumptech.glide.Glide;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
 import com.google.firebase.auth.AuthResult;
@@ -28,13 +34,14 @@ public class LoginActivity extends AppCompatActivity {
     private EditText phoneNumberInput;
     private EditText passwordInput;
     private FirebaseAuth mAuth;
+    private Dialog loadingDialog;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.login_activity);
 
-        //Terms of service string formatting
+        // Terms of service string formatting
         TextView textViewTerms = findViewById(R.id.textViewTerms);
         String termsText = "By clicking Sign up, you agree to our Terms of Service and Privacy Policy";
         SpannableString spannableString = new SpannableString(termsText);
@@ -67,11 +74,11 @@ public class LoginActivity extends AppCompatActivity {
             }
         };
 
-        //Setting the spans for the text
+        // Setting the spans for the text
         spannableString.setSpan(termsClickableSpan, termsText.indexOf("Terms of Service"), termsText.indexOf("Terms of Service") + "Terms of Service".length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
         spannableString.setSpan(privacyClickableSpan, termsText.indexOf("Privacy Policy"), termsText.indexOf("Privacy Policy") + "Privacy Policy".length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
 
-        //Setting the SpannableString to the TextView
+        // Setting the SpannableString to the TextView
         textViewTerms.setText(spannableString);
         textViewTerms.setMovementMethod(LinkMovementMethod.getInstance());
 
@@ -100,15 +107,18 @@ public class LoginActivity extends AppCompatActivity {
             return;
         }
 
+        showLoadingScreen(); // Show loading screen before sign-in starts
         signIn(phoneNumber, password);
     }
 
     private void onSignUpClicked(View view) {
+        Intent intent = new Intent(LoginActivity.this, RegistrationActivity.class);
+        startActivity(intent);
         finish();
     }
 
     private void onOnlySMSClicked(View view) {
-        //TODO handle the logic for using the app only for SMS
+        // TODO: Handle the logic for using the app only for SMS
         Toast.makeText(this, "Using the app only for SMS", Toast.LENGTH_SHORT).show();
     }
 
@@ -119,20 +129,49 @@ public class LoginActivity extends AppCompatActivity {
                 .addOnCompleteListener(this, new OnCompleteListener<AuthResult>() {
                     @Override
                     public void onComplete(@NonNull Task<AuthResult> task) {
+                        dismissLoadingScreen(); // Dismiss loading screen when task completes
                         if (task.isSuccessful()) {
-                            //update UI with the signed-in user's information
-                            Toast.makeText(LoginActivity.this, "Authentication successful.",
-                                    Toast.LENGTH_SHORT).show();
-                            //redirect to main activity or dashboard
+                            // Update UI with the signed-in user's information
+                            Toast.makeText(LoginActivity.this, "Authentication successful.", Toast.LENGTH_SHORT).show();
+                            // Redirect to main activity or dashboard
                             Intent intent = new Intent(LoginActivity.this, MainActivity.class);
                             startActivity(intent);
                             finish();
                         } else {
-                            //fail: display a message to the user.
-                            Toast.makeText(LoginActivity.this, "Authentication failed.",
-                                    Toast.LENGTH_SHORT).show();
+                            // Fail: display a message to the user.
+                            Toast.makeText(LoginActivity.this, "Authentication failed.", Toast.LENGTH_SHORT).show();
                         }
                     }
                 });
+    }
+
+    private void showLoadingScreen() {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setCancelable(false);
+
+        LayoutInflater inflater = this.getLayoutInflater();
+        View dialogView = inflater.inflate(R.layout.dialog_loading, null);
+
+        ImageView loadingImageView = dialogView.findViewById(R.id.loading_image);
+        Glide.with(this)
+                .asGif()
+                .load(R.drawable.loading_animation) // Replace with your GIF drawable
+                .into(loadingImageView);
+
+        builder.setView(dialogView);
+
+        loadingDialog = builder.create();
+
+        if (loadingDialog.getWindow() != null) {
+            loadingDialog.getWindow().setBackgroundDrawable(new ColorDrawable(android.graphics.Color.TRANSPARENT));
+        }
+
+        loadingDialog.show();
+    }
+
+    private void dismissLoadingScreen() {
+        if (loadingDialog != null && loadingDialog.isShowing()) {
+            loadingDialog.dismiss();
+        }
     }
 }
