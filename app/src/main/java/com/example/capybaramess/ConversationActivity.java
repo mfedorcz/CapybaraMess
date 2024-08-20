@@ -78,7 +78,6 @@ public class ConversationActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        Intent intent = getIntent();
 
         setContentView(R.layout.conversation_activity);
 
@@ -112,6 +111,7 @@ public class ConversationActivity extends AppCompatActivity {
 
         // Setting up the custom ActionBar
         setupActionBar();
+
         // Setting up Chat
         setupChat();
         // Register the network change receiver
@@ -121,6 +121,7 @@ public class ConversationActivity extends AppCompatActivity {
         // Initialize BroadcastReceiver
         initializeSmsReceiver();
         registerReceiver(smsReceiver, new IntentFilter("android.provider.Telephony.SMS_RECEIVED"));
+
     }
 
     @Override
@@ -131,6 +132,23 @@ public class ConversationActivity extends AppCompatActivity {
         }
         unregisterReceiver(smsReceiver);
         executorService.shutdown();
+    }
+    private void AddConversationMessageInit(String message){
+        ChatMessage initMessage = new ChatMessage(
+                phoneNumber,
+                contact.getAddress(),
+                message,
+                System.currentTimeMillis(),
+                ChatMessage.MessageType.OUTGOING,  //MessageType default set to OUTGOING
+                ChatMessage.MessagePlatform.SMS //MessagePlatform default to SMS
+        );
+        // Check permission and send the message
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.SEND_SMS) != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.SEND_SMS}, REQUEST_SEND_SMS);
+        } else {
+            sendMessage(initMessage);
+            updateUIWithNewMessage(initMessage);
+        }
     }
     private void setupActionBar() {
         // Enable custom ActionBar
@@ -205,8 +223,6 @@ public class ConversationActivity extends AppCompatActivity {
             modeSwitch.setChecked(true);
         }
     }
-
-
     private void initializeSmsReceiver() {
         smsReceiver = new BroadcastReceiver() {
             @Override
@@ -286,7 +302,14 @@ public class ConversationActivity extends AppCompatActivity {
             fetchMessagesFromFirebase();
             adapter.notifyDataSetChanged(); // Notify adapter that data has changed
         } else {
-            Log.e("ConversationActivity", "Invalid threadId passed to ConversationActivity");
+            fetchMessagesFromFirebase();
+            adapter.notifyDataSetChanged();
+            Log.e("ConversationActivity", "\"Only OTT Chat\" threadId passed to ConversationActivity");
+        }
+        // Checking if chat was from AddConversationActivity and proceeding accordingly
+        Intent intent = getIntent();
+        if(intent.getBooleanExtra("newConversation", false)){
+            AddConversationMessageInit(intent.getStringExtra("message"));
         }
     }
     private void updateUIWithNewMessage(ChatMessage message) {
@@ -309,21 +332,75 @@ public class ConversationActivity extends AppCompatActivity {
     }
 
     private void sendViaFirebase(ChatMessage message) {
+        Log.d("Firebase", "Sending Firestore message: " + message.getContent());
         message.setPlatform(ChatMessage.MessagePlatform.OTT);
-        String conversationId = AppConfig.getConversationId(message.getRecipientId().length() == 9 ? "+48" + message.getRecipientId() : message.getRecipientId());
+        String conversationId = AppConfig.getConversationId(
+                message.getRecipientId().length() == 9 ? "+48" + message.getRecipientId() : message.getRecipientId()
+        );
 
-        //Reference to the conversation document
-        DocumentReference conversationRef = firestore.collection("conversations")
-                .document(conversationId);
+        // Reference to the conversation document
+        DocumentReference conversationRef = firestore.collection("conversations").document(conversationId);
 
-        //Create a map to represent the message data
+        // Check if the conversation document exists
+        conversationRef.get().addOnSuccessListener(documentSnapshot -> {
+            if (!documentSnapshot.exists()) {
+                // If the document doesn't exist, create a new conversation and add the message
+                addConversationToFirestore(message);
+                Log.d("Firebase", "Conversation not present in Firestore. Creating entry.");
+            } else {
+                // If the document exists, just add the message to the messages subcollection
+                addMessageToConversation(conversationRef, message);
+            }
+
+            // Update the conversation document with the last message and timestamp
+            Map<String, Object> conversationData = new HashMap<>();
+            conversationData.put("participants", Arrays.asList(message.getSenderId(), message.getRecipientId()));
+            conversationData.put("lastMessage", message.getContent());
+            conversationData.put("lastSenderId", AppConfig.getPhoneNumber());
+            conversationData.put("lastTimestamp", message.getTimestamp());
+
+            conversationRef.set(conversationData, SetOptions.merge())
+                    .addOnSuccessListener(aVoid -> Log.d("Firebase", "Conversation updated successfully."))
+                    .addOnFailureListener(e -> Log.e("Firebase", "Failed to update conversation.", e));
+        }).addOnFailureListener(e -> {
+            Log.e("Firebase", "Failed to check if conversation exists.", e);
+            // Handle failure to check for document existence
+        });
+    }
+
+    private void addConversationToFirestore(ChatMessage message) {
+        String conversationId = AppConfig.getConversationId(
+                message.getRecipientId().length() == 9 ? "+48" + message.getRecipientId() : message.getRecipientId()
+        );
+
+        DocumentReference conversationRef = firestore.collection("conversations").document(conversationId);
+
+        // Data for the main conversation document
+        Map<String, Object> conversationData = new HashMap<>();
+        conversationData.put("conversationId", conversationId);
+        conversationData.put("participants", Arrays.asList(message.getSenderId(), message.getRecipientId()));
+        conversationData.put("lastMessage", message.getContent());
+        conversationData.put("lastSenderId", AppConfig.getPhoneNumber());
+        conversationData.put("lastTimestamp", message.getTimestamp());
+
+        // Set the conversation document in Firestore
+        conversationRef.set(conversationData, SetOptions.merge())
+                .addOnSuccessListener(aVoid -> Log.d("Firebase", "Conversation document created successfully."))
+                .addOnFailureListener(e -> Log.e("Firebase", "Failed to create conversation document.", e));
+
+        // Add the first message to the messages subcollection
+        addMessageToConversation(conversationRef, message);
+    }
+
+    private void addMessageToConversation(DocumentReference conversationRef, ChatMessage message) {
+        // Create a map to represent the message data
         Map<String, Object> messageData = new HashMap<>();
         messageData.put("senderId", message.getSenderId());
         messageData.put("recipientId", message.getRecipientId());
         messageData.put("content", message.getContent());
         messageData.put("timestamp", message.getTimestamp());
 
-        //Add the message to the messages sub-collection
+        // Add the message to the messages subcollection
         conversationRef.collection("messages")
                 .add(messageData)
                 .addOnSuccessListener(documentReference -> Log.d("Firebase", "Message sent successfully via Firebase."))
@@ -334,17 +411,6 @@ public class ConversationActivity extends AppCompatActivity {
                     message.setPlatform(ChatMessage.MessagePlatform.SMS);
                     sendViaSMS(message);
                 });
-
-        // Update the conversation document with the last message and timestamp
-        Map<String, Object> conversationData = new HashMap<>();
-        conversationData.put("participants", Arrays.asList(message.getSenderId(), message.getRecipientId()));
-        conversationData.put("lastMessage", message.getContent());
-        conversationData.put("lastSenderId", AppConfig.getPhoneNumber());
-        conversationData.put("lastTimestamp", message.getTimestamp());
-
-        conversationRef.set(conversationData, SetOptions.merge())
-                .addOnSuccessListener(aVoid -> Log.d("Firebase", "Conversation updated successfully."))
-                .addOnFailureListener(e -> Log.e("Firebase", "Failed to update conversation.", e));
     }
 
 

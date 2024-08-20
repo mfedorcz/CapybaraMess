@@ -123,6 +123,19 @@ public class MainActivity extends AppCompatActivity {
                 }
             });
         }
+        // Scroll to the top if not already at the top
+        if (contactsRecyclerView != null) {
+            LinearLayoutManager layoutManager = (LinearLayoutManager) contactsRecyclerView.getLayoutManager();
+            if (layoutManager != null) {
+                int firstVisibleItemPosition = layoutManager.findFirstVisibleItemPosition();
+                if (firstVisibleItemPosition > 0) {
+                    contactsRecyclerView.scrollToPosition(0);
+                    Log.d(TAG, "onResume: List scrolled to the top.");
+                } else {
+                    Log.d(TAG, "onResume: List already at the top.");
+                }
+            }
+        }
     }
 
 
