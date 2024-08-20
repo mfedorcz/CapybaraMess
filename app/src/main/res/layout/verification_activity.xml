@@ -118,7 +118,7 @@
         android:layout_height="20dp" />
 
     <androidx.appcompat.widget.AppCompatButton
-        android:id="@+id/buttonSignIn"
+        android:id="@+id/buttonSendAgain"
         android:layout_below="@id/Space3"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"

@@ -1,13 +1,20 @@
 package com.example.capybaramess;
 
+import android.app.AlertDialog;
+import android.app.Dialog;
 import android.content.Intent;
+import android.graphics.drawable.ColorDrawable;
 import android.os.Bundle;
+import android.view.LayoutInflater;
+import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ImageView;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 
+import com.bumptech.glide.Glide;
 import com.google.firebase.auth.AuthCredential;
 import com.google.firebase.auth.EmailAuthProvider;
 import com.google.firebase.auth.FirebaseAuth;
@@ -20,6 +27,7 @@ public class SetPasswordActivity extends AppCompatActivity {
     private EditText editTextPassword2;
     private Button buttonSetPassword;
     private FirebaseAuth mAuth;
+    private Dialog loadingDialog;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -53,7 +61,8 @@ public class SetPasswordActivity extends AppCompatActivity {
                 editTextPassword2.setText("");
                 Toast.makeText(SetPasswordActivity.this, "Passwords do not match", Toast.LENGTH_SHORT).show();
             } else {
-                // If passwords match, proceed to link the account
+                // If passwords match, show the loading screen and proceed to link the account
+                showLoadingScreen();
                 linkPasswordToAccount(password1);
             }
         });
@@ -71,6 +80,7 @@ public class SetPasswordActivity extends AppCompatActivity {
                             Toast.makeText(SetPasswordActivity.this, "Password linked successfully", Toast.LENGTH_SHORT).show();
                             updateUserProfile(email);
                         } else {
+                            dismissLoadingScreen();  // Dismiss loading screen if linking fails
                             Toast.makeText(SetPasswordActivity.this, "Failed to link account with password: " + task.getException().getMessage(), Toast.LENGTH_LONG).show();
                         }
                     });
@@ -86,6 +96,7 @@ public class SetPasswordActivity extends AppCompatActivity {
 
             user.updateProfile(profileUpdates)
                     .addOnCompleteListener(task -> {
+                        dismissLoadingScreen();  // Dismiss loading screen after profile update
                         if (task.isSuccessful()) {
                             Toast.makeText(SetPasswordActivity.this, "User profile updated", Toast.LENGTH_LONG).show();
                             startWelcomeActivity();  // Call here after profile update
@@ -101,5 +112,37 @@ public class SetPasswordActivity extends AppCompatActivity {
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
         startActivity(intent);
         finish();
+    }
+
+    private void showLoadingScreen() {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setCancelable(false);
+
+        LayoutInflater inflater = this.getLayoutInflater();
+        View dialogView = inflater.inflate(R.layout.dialog_loading, null);
+
+        // Load GIF using Glide
+        ImageView loadingImageView = dialogView.findViewById(R.id.loading_image);
+        Glide.with(this)
+                .asGif()
+                .load(R.drawable.loading_animation)
+                .into(loadingImageView);
+
+        builder.setView(dialogView);
+
+        loadingDialog = builder.create();
+
+        // Make dialog background transparent
+        if (loadingDialog.getWindow() != null) {
+            loadingDialog.getWindow().setBackgroundDrawable(new ColorDrawable(android.graphics.Color.TRANSPARENT));
+        }
+
+        loadingDialog.show();
+    }
+
+    private void dismissLoadingScreen() {
+        if (loadingDialog != null && loadingDialog.isShowing()) {
+            loadingDialog.dismiss();
+        }
     }
 }

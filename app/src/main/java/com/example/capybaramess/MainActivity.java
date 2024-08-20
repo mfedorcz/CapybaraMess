@@ -1,7 +1,6 @@
 package com.example.capybaramess;
 
 import android.Manifest;
-import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.database.ContentObserver;
@@ -12,7 +11,6 @@ import android.os.Handler;
 import android.os.Looper;
 import android.provider.ContactsContract;
 import android.provider.Telephony;
-import android.telephony.TelephonyManager;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -20,7 +18,6 @@ import android.widget.ImageView;
 import android.widget.TextView;
 
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.DividerItemDecoration;
 import androidx.recyclerview.widget.LinearLayoutManager;
@@ -31,19 +28,19 @@ import com.google.firebase.FirebaseApp;
 import com.google.firebase.appcheck.FirebaseAppCheck;
 import com.google.firebase.appcheck.playintegrity.PlayIntegrityAppCheckProviderFactory;
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.ListenerRegistration;
+import com.google.firebase.firestore.QuerySnapshot;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -78,18 +75,37 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
 
-        if (!isUserSignedIn()) {
+        // Check if the user is registered
+        if (isUserRegistered()) {
+            Log.d(TAG, "onCreate: User is registered.");
+
+            // Initialize phone number only if the user is registered
+            initializePhoneNumber();
+
+            // Check if a username is added and decide further actions
+            isUsernameAdded(exists -> {
+                if (exists) {
+                    Log.d("UsernameCheck", "Username is already added for this phone number.");
+
+                    // Proceed with the rest of the initialization
+                    if (isPhoneNumberValid()) {
+                        Log.d(TAG, "onCreate: Phone number is valid, continuing initialization.");
+                        initializeMainActivity();
+                    } else {
+                        Log.e(TAG, "onCreate: Phone number is invalid, stopping execution.");
+                    }
+                } else {
+                    Log.d("UsernameCheck", "No username found for this phone number.");
+                    redirectToWelcome(); // Redirect to WelcomeActivity if the username is not found
+                }
+            });
+        } else {
             Log.d(TAG, "onCreate: User not signed in, redirecting to RegistrationActivity.");
             redirectToRegistration();
-            return;
         }
+    }
 
-        initializePhoneNumber();
-        if (!isPhoneNumberValid()) {
-            Log.e(TAG, "onCreate: Phone number is invalid, stopping execution.");
-            return;
-        }
-
+    private void initializeMainActivity() {
         setContentView(R.layout.main_activity);
         initializeUIComponents();
         setupActionBar();
@@ -101,6 +117,7 @@ public class MainActivity extends AppCompatActivity {
             updateUI(conversationMap);
         });
     }
+
 
     @Override
     protected void onStart() {
@@ -190,13 +207,7 @@ public class MainActivity extends AppCompatActivity {
 
     private void initializePhoneNumber() {
         Log.d(TAG, "initializePhoneNumber: Fetching device phone number.");
-        phoneNumber = getDevicePhoneNumber();
-        String firebasePhoneNumber = FirebaseAuth.getInstance().getCurrentUser().getPhoneNumber();
-        if (firebasePhoneNumber == null || !firebasePhoneNumber.equals(phoneNumber)) {
-            Log.w(TAG, "initializePhoneNumber: Phone number mismatch or phone number is missing!");
-        } else {
-            Log.d(TAG, "initializePhoneNumber: Phone number matches.");
-        }
+        phoneNumber = FirebaseAuth.getInstance().getCurrentUser().getPhoneNumber();
         AppConfig.setPhoneNumber(phoneNumber);
     }
 
@@ -384,8 +395,7 @@ public class MainActivity extends AppCompatActivity {
         return ContextCompat.checkSelfPermission(this, Manifest.permission.READ_CONTACTS) == PackageManager.PERMISSION_GRANTED &&
                 ContextCompat.checkSelfPermission(this, Manifest.permission.READ_SMS) == PackageManager.PERMISSION_GRANTED &&
                 ContextCompat.checkSelfPermission(this, Manifest.permission.RECEIVE_SMS) == PackageManager.PERMISSION_GRANTED &&
-                ContextCompat.checkSelfPermission(this, Manifest.permission.SEND_SMS) == PackageManager.PERMISSION_GRANTED &&
-                ContextCompat.checkSelfPermission(this, Manifest.permission.READ_PHONE_STATE) == PackageManager.PERMISSION_GRANTED;
+                ContextCompat.checkSelfPermission(this, Manifest.permission.SEND_SMS) == PackageManager.PERMISSION_GRANTED;
     }
 
     private void requestPermissionsAndExit() {
@@ -404,9 +414,46 @@ public class MainActivity extends AppCompatActivity {
         return true;
     }
 
-    private boolean isUserSignedIn() {
-        Log.d(TAG, "isUserSignedIn: Checking if user is signed in.");
-        return FirebaseAuth.getInstance().getCurrentUser() != null;
+    private boolean isUserRegistered() {
+        Log.d(TAG, "isUserRegistered: Checking if user is signed in.");
+        FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
+        if (user != null) {
+            Log.d(TAG, user.getEmail() != null && !user.getEmail().isEmpty() ? "User is registered " + user.getEmail(): "User is not registered: " + user.getPhoneNumber());
+            return user.getEmail() != null && !user.getEmail().isEmpty();
+        } else {
+            Log.d(TAG, "No user is signed in.");
+            return false;
+        }
+    }
+
+    public void isUsernameAdded(UsernameCheckCallback callback) {
+        String phoneNumber = AppConfig.getPhoneNumber();
+
+        firestore.collection("users")
+                .whereEqualTo("phoneNumber", phoneNumber)
+                .whereNotEqualTo("username", null)
+                .whereGreaterThan("username", "")
+                .get()
+                .addOnCompleteListener(task -> {
+            if (task.isSuccessful()) {
+                QuerySnapshot querySnapshot = task.getResult();
+                if (querySnapshot != null && !querySnapshot.isEmpty()) {
+                    // A document with the phoneNumber and a username exists
+                    callback.onCheckComplete(true);
+                } else {
+                    // No document with the phoneNumber and a username exists
+                    callback.onCheckComplete(false);
+                }
+            } else {
+                // Handle errors
+                Log.e("FirestoreError", "Error checking username: " + task.getException().getMessage());
+                callback.onCheckComplete(false); // Handle error by returning false
+            }
+        });
+    }
+
+    public interface UsernameCheckCallback {
+        void onCheckComplete(boolean exists);
     }
 
     private void redirectToRegistration() {
@@ -416,6 +463,12 @@ public class MainActivity extends AppCompatActivity {
         finish();
     }
 
+    private void redirectToWelcome() {
+        Log.d(TAG, "redirectToWelcome: Redirecting to WelcomeActivity.");
+        Intent intent = new Intent(this, WelcomeActivity.class);
+        startActivity(intent);
+        finish();
+    }
     private void initiateConversationList(ConversationCallback callback) {
         executorService.execute(() -> {
             Map<Long, Contact> conversationMap = fetchInboxConversations();
@@ -766,15 +819,6 @@ public class MainActivity extends AppCompatActivity {
         return contactName != null ? contactName : phoneNumber;
     }
 
-    private String getDevicePhoneNumber() {
-        Log.d(TAG, "getDevicePhoneNumber: Fetching device phone number.");
-        TelephonyManager telephonyManager = (TelephonyManager) getSystemService(Context.TELEPHONY_SERVICE);
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.READ_PHONE_STATE) != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.READ_PHONE_STATE}, 1);
-            return null;
-        }
-        return telephonyManager.getLine1Number();
-    }
 
     private void updateCache(Contact updatedContact) {
         if (cachedConversationMap != null && updatedContact != null) {

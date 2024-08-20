@@ -71,7 +71,6 @@ public class RegistrationActivity extends AppCompatActivity {
                         editTextPhoneNumber.setError("This phone number is already registered with a username.");
                     } else {
                         // Phone number does not exist, send verification code
-                        dismissLoadingScreen();
                         sendVerificationCode(phone);
                     }
                 });
@@ -148,8 +147,6 @@ public class RegistrationActivity extends AppCompatActivity {
     }
 
     private void sendVerificationCode(String phone) {
-
-
         PhoneAuthOptions options = PhoneAuthOptions.newBuilder(mAuth)
                 .setPhoneNumber(phone)       // number to verify
                 .setTimeout(60L, TimeUnit.SECONDS) // Timeout and unit
@@ -177,13 +174,15 @@ public class RegistrationActivity extends AppCompatActivity {
                     public void onCodeSent(String verificationId, PhoneAuthProvider.ForceResendingToken forceResendingToken) {
                         super.onCodeSent(verificationId, forceResendingToken);
 
-                        // Dismiss the loading screen
-                        dismissLoadingScreen();
-
                         // Pass verification ID to the next activity
                         Intent intent = new Intent(RegistrationActivity.this, CodeVerificationActivity.class);
                         intent.putExtra("verificationId", verificationId);
+                        intent.putExtra("phoneNumber", phone);
+                        intent.putExtra("forceResendingToken", forceResendingToken);
+                        dismissLoadingScreen();
+                        // Dismiss the loading screen
                         startActivity(intent);
+
                         finish();
                     }
                 })
