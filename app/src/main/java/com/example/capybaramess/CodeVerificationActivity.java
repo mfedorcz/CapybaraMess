@@ -39,7 +39,7 @@ public class CodeVerificationActivity extends AppCompatActivity {
     private long millisUntilFinished; // To store the remaining time
     private boolean canResendCode = false;
     private PhoneAuthProvider.ForceResendingToken forceResendingToken;
-
+    private boolean isActivityActive = false;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -99,11 +99,22 @@ public class CodeVerificationActivity extends AppCompatActivity {
                 long minutes = secondsRemaining / 60;
                 long seconds = secondsRemaining % 60;
                 String timeRemaining = String.format("%02d:%02d", minutes, seconds);
-                Toast.makeText(CodeVerificationActivity.this, "You can resend the code in: " + timeRemaining, Toast.LENGTH_SHORT).show();
+                if (isActivityActive) {
+                    Toast.makeText(CodeVerificationActivity.this, "You can now resend the verification code.", Toast.LENGTH_SHORT).show();
+                }
             }
         });
     }
-
+    @Override
+    protected void onStart() {
+        super.onStart();
+        isActivityActive = true;
+    }
+    @Override
+    protected void onStop() {
+        super.onStop();
+        isActivityActive = false;
+    }
     private void startResendCountDown() {
         resendCountDownTimer = new CountDownTimer(resendTimeout, 1000) {
             @Override
