@@ -74,6 +74,7 @@ public class CodeVerificationActivity extends AppCompatActivity {
                     if (task.isSuccessful()) {
                         Intent intent = new Intent(CodeVerificationActivity.this, SetPasswordActivity.class);
                         startActivity(intent);
+                        finish();
                     } else {
                         Toast.makeText(CodeVerificationActivity.this, "Verification failed.", Toast.LENGTH_SHORT).show();
                     }

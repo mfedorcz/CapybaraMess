@@ -88,7 +88,7 @@ public class SetPasswordActivity extends AppCompatActivity {
                     .addOnCompleteListener(task -> {
                         if (task.isSuccessful()) {
                             Toast.makeText(SetPasswordActivity.this, "User profile updated", Toast.LENGTH_LONG).show();
-                            startMainActivity();  // Call here after profile update
+                            startWelcomeActivity();  // Call here after profile update
                         } else {
                             Toast.makeText(SetPasswordActivity.this, "Profile update failed: " + task.getException().getMessage(), Toast.LENGTH_LONG).show();
                         }
@@ -96,7 +96,7 @@ public class SetPasswordActivity extends AppCompatActivity {
         }
     }
 
-    private void startMainActivity() {
+    private void startWelcomeActivity() {
         Intent intent = new Intent(this, WelcomeActivity.class);
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
         startActivity(intent);
