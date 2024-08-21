@@ -44,6 +44,7 @@ public class CodeVerificationActivity extends AppCompatActivity {
     private boolean canResendCode = false;
     private PhoneAuthProvider.ForceResendingToken forceResendingToken;
     private boolean isActivityActive = false;
+    private int failedAttempts = 0; // Track the number of failed attempts
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -165,30 +166,45 @@ public class CodeVerificationActivity extends AppCompatActivity {
                 .addOnCompleteListener(this, task -> {
                     dismissLoadingScreen();
                     if (task.isSuccessful()) {
+                        // Reset failed attempts on successful sign-in
+                        failedAttempts = 0;
+
                         // Determine the origin of the request
                         Intent intent;
                         String origin = getIntent().getStringExtra("origin");
 
-
                         if ("registration".equals(origin)) {
-                            // Redirect to SetPasswordActivity if started by RegistrationActivity
                             intent = new Intent(CodeVerificationActivity.this, SetPasswordActivity.class);
                         } else {
-                            // Redirect to MainActivity if started by LoginActivity
-                            signIn(phoneNumber,getIntent().getStringExtra("password"));
                             intent = new Intent(CodeVerificationActivity.this, MainActivity.class);
                         }
 
                         startActivity(intent);
                         finish();
                     } else {
-                        Toast.makeText(CodeVerificationActivity.this, "Verification failed. Try again.", Toast.LENGTH_SHORT).show();
-                        Intent intent = new Intent(CodeVerificationActivity.this, RegistrationActivity.class);
-                        startActivity(intent);
-                        finish();
+                        failedAttempts++;
+                        if (failedAttempts < 2) {
+                            // Allow a second attempt
+                            Toast.makeText(CodeVerificationActivity.this, "Verification failed. Please try again.", Toast.LENGTH_SHORT).show();
+                            clearCodeInputs();
+                        } else {
+                            // If second attempt fails, direct to a different flow, e.g., re-enter phone number or reset
+                            Toast.makeText(CodeVerificationActivity.this, "Verification failed. You have used all attempts.", Toast.LENGTH_SHORT).show();
+                            Intent intent = new Intent(CodeVerificationActivity.this, RegistrationActivity.class);
+                            startActivity(intent);
+                            finish();
+                        }
                     }
                 });
     }
+
+    private void clearCodeInputs() {
+        for (EditText editText : codeInputs) {
+            editText.setText("");
+        }
+        codeInputs[0].requestFocus();
+    }
+
     private void signIn(String phoneNumber, String password) {
         String email = phoneNumber + "@capy.bara";
 
