@@ -115,13 +115,25 @@ public class AddConversationActivity extends AppCompatActivity {
                         Log.d("Firestore", "User found: " + username);
                     } else {
                         Log.d("Firestore", "User not found: " + username);
-                        // Username not found, show SMS warning dialog
-                        showSMSWarningDialog(username, message);
+
+                        // Check if the username is in phone number format
+                        if (isPhoneNumber(username)) {
+                            // Username is a phone number, show SMS warning dialog
+                            showSMSWarningDialog(username, message);
+                        } else {
+                            // Username is not a phone number, show toast message
+                            Toast.makeText(AddConversationActivity.this, "Username not found, try with the telephone number.", Toast.LENGTH_SHORT).show();
+                        }
                     }
                 })
                 .addOnFailureListener(e -> {
                     Toast.makeText(this, "Failed to check recipient. Please try again.", Toast.LENGTH_SHORT).show();
                 });
+    }
+    private boolean isPhoneNumber(String input) {
+        // Basic phone number regex, modify as needed for your use case
+        String phoneNumberPattern = "^\\+?[0-9]{10,15}$";
+        return input.matches(phoneNumberPattern);
     }
 
     private void showSMSWarningDialog(String recipient, String message) {
