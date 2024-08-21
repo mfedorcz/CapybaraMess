@@ -18,6 +18,7 @@ import android.widget.ImageView;
 import android.widget.TextView;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.app.AppCompatDelegate;
 import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.DividerItemDecoration;
 import androidx.recyclerview.widget.LinearLayoutManager;
@@ -62,8 +63,8 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_NO); //disable Darkmode..
         super.onCreate(savedInstanceState);
-
         Log.d(TAG, "onCreate: Initializing MainActivity");
 
         initializeFirebase();
@@ -90,7 +91,6 @@ public class MainActivity extends AppCompatActivity {
                     // Proceed with the rest of the initialization
                     if (isPhoneNumberValid()) {
                         Log.d(TAG, "onCreate: Phone number is valid, continuing initialization.");
-                        initializeMainActivity();
                     } else {
                         Log.e(TAG, "onCreate: Phone number is invalid, stopping execution.");
                     }
@@ -103,6 +103,7 @@ public class MainActivity extends AppCompatActivity {
             Log.d(TAG, "onCreate: User not signed in, redirecting to RegistrationActivity.");
             redirectToRegistration();
         }
+        initializeMainActivity();
     }
 
     private void initializeMainActivity() {
@@ -427,6 +428,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void isUsernameAdded(UsernameCheckCallback callback) {
+        Log.d(TAG, "Performing Username check.");
         String phoneNumber = AppConfig.getPhoneNumber();
 
         firestore.collection("users")
@@ -435,6 +437,7 @@ public class MainActivity extends AppCompatActivity {
                 .whereGreaterThan("username", "")
                 .get()
                 .addOnCompleteListener(task -> {
+                    Log.d(TAG, "Completed Firebase query for username check.");
             if (task.isSuccessful()) {
                 QuerySnapshot querySnapshot = task.getResult();
                 if (querySnapshot != null && !querySnapshot.isEmpty()) {
