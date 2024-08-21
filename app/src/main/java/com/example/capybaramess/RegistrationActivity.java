@@ -176,6 +176,7 @@ public class RegistrationActivity extends AppCompatActivity {
 
                         // Pass verification ID to the next activity
                         Intent intent = new Intent(RegistrationActivity.this, CodeVerificationActivity.class);
+                        intent.putExtra("origin", "registration");
                         intent.putExtra("verificationId", verificationId);
                         intent.putExtra("phoneNumber", phone);
                         intent.putExtra("forceResendingToken", forceResendingToken);

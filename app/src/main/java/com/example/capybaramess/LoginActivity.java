@@ -26,8 +26,14 @@ import androidx.appcompat.app.AppCompatActivity;
 import com.bumptech.glide.Glide;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
+import com.google.firebase.FirebaseException;
 import com.google.firebase.auth.AuthResult;
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.PhoneAuthCredential;
+import com.google.firebase.auth.PhoneAuthOptions;
+import com.google.firebase.auth.PhoneAuthProvider;
+
+import java.util.concurrent.TimeUnit;
 
 public class LoginActivity extends AppCompatActivity {
 
@@ -131,16 +137,62 @@ public class LoginActivity extends AppCompatActivity {
                     public void onComplete(@NonNull Task<AuthResult> task) {
                         dismissLoadingScreen(); // Dismiss loading screen when task completes
                         if (task.isSuccessful()) {
-                            // Update UI with the signed-in user's information
-                            Toast.makeText(LoginActivity.this, "Authentication successful.", Toast.LENGTH_SHORT).show();
-                            // Redirect to main activity or dashboard
-                            Intent intent = new Intent(LoginActivity.this, MainActivity.class);
-                            startActivity(intent);
-                            finish();
+                            // Proceed to phone verification instead of main activity
+                            mAuth.signOut();
+                            startPhoneVerification(phoneNumber, password);
                         } else {
                             // Fail: display a message to the user.
                             Toast.makeText(LoginActivity.this, "Authentication failed.", Toast.LENGTH_SHORT).show();
                         }
+                    }
+                });
+    }
+    private void startPhoneVerification(String phoneNumber, String password) {
+        PhoneAuthOptions options = PhoneAuthOptions.newBuilder(mAuth)
+                .setPhoneNumber(phoneNumber)       // Phone number to verify
+                .setTimeout(60L, TimeUnit.SECONDS) // Timeout and unit
+                .setActivity(this)                 // Activity for callback binding
+                .setCallbacks(new PhoneAuthProvider.OnVerificationStateChangedCallbacks() {
+                    @Override
+                    public void onVerificationCompleted(PhoneAuthCredential credential) {
+                        // Automatically sign in and redirect to main activity
+                        signInWithPhoneAuthCredential(credential);
+                    }
+
+                    @Override
+                    public void onVerificationFailed(FirebaseException e) {
+                        Toast.makeText(LoginActivity.this, "Verification failed: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                    }
+
+                    @Override
+                    public void onCodeSent(String verificationId, PhoneAuthProvider.ForceResendingToken token) {
+                        // Redirect to code verification activity
+                        Intent intent = new Intent(LoginActivity.this, CodeVerificationActivity.class);
+                        intent.putExtra("origin", "login");
+                        intent.putExtra("verificationId", verificationId);
+                        intent.putExtra("phoneNumber", phoneNumber);
+                        intent.putExtra("password", password);
+                        intent.putExtra("forceResendingToken", token);
+                        startActivity(intent);
+                        finish();
+                    }
+                })
+                .build();
+
+        PhoneAuthProvider.verifyPhoneNumber(options);
+    }
+
+    private void signInWithPhoneAuthCredential(PhoneAuthCredential credential) {
+        mAuth.signInWithCredential(credential)
+                .addOnCompleteListener(this, task -> {
+                    dismissLoadingScreen();
+                    if (task.isSuccessful()) {
+                        // Redirect to main activity or dashboard
+                        Intent intent = new Intent(this, MainActivity.class);
+                        startActivity(intent);
+                        finish();
+                    } else {
+                        Toast.makeText(this, "Verification failed. Try again.", Toast.LENGTH_SHORT).show();
                     }
                 });
     }

@@ -16,9 +16,13 @@ import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.Toast;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.bumptech.glide.Glide;
+import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.tasks.Task;
+import com.google.firebase.auth.AuthResult;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.PhoneAuthCredential;
 import com.google.firebase.auth.PhoneAuthOptions;
@@ -161,7 +165,20 @@ public class CodeVerificationActivity extends AppCompatActivity {
                 .addOnCompleteListener(this, task -> {
                     dismissLoadingScreen();
                     if (task.isSuccessful()) {
-                        Intent intent = new Intent(CodeVerificationActivity.this, SetPasswordActivity.class);
+                        // Determine the origin of the request
+                        Intent intent;
+                        String origin = getIntent().getStringExtra("origin");
+
+
+                        if ("registration".equals(origin)) {
+                            // Redirect to SetPasswordActivity if started by RegistrationActivity
+                            intent = new Intent(CodeVerificationActivity.this, SetPasswordActivity.class);
+                        } else {
+                            // Redirect to MainActivity if started by LoginActivity
+                            signIn(phoneNumber,getIntent().getStringExtra("password"));
+                            intent = new Intent(CodeVerificationActivity.this, MainActivity.class);
+                        }
+
                         startActivity(intent);
                         finish();
                     } else {
@@ -172,7 +189,21 @@ public class CodeVerificationActivity extends AppCompatActivity {
                     }
                 });
     }
+    private void signIn(String phoneNumber, String password) {
+        String email = phoneNumber + "@capy.bara";
 
+        mAuth.signInWithEmailAndPassword(email, password)
+                .addOnCompleteListener(this, new OnCompleteListener<AuthResult>() {
+                    @Override
+                    public void onComplete(@NonNull Task<AuthResult> task) {
+                        if (task.isSuccessful()) {
+                            Log.d("CodeVerification", "signIn successful");
+                        } else {
+                            Toast.makeText(CodeVerificationActivity.this, "Authentication failed.", Toast.LENGTH_SHORT).show();
+                        }
+                    }
+                });
+    }
     private void resendVerificationCode(String phoneNumber) {
         showLoadingScreen();
 

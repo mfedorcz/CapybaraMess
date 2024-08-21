@@ -151,6 +151,8 @@
             android:textColor="#828282"
             android:textAllCaps="false"
             android:textSize="16sp"
+            android:enabled="false"
+            android:visibility="gone"
             android:background="@drawable/button2_background"/>
 
     </LinearLayout>
