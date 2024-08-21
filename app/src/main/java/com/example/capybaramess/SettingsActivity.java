@@ -1,10 +1,12 @@
 package com.example.capybaramess;
 
 import android.Manifest;
+import android.app.Dialog;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.drawable.ColorDrawable;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -43,6 +45,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 
 public class SettingsActivity extends AppCompatActivity {
 
@@ -54,6 +57,7 @@ public class SettingsActivity extends AppCompatActivity {
     private StorageReference storageReference;
     private FirebaseAuth mAuth;
     private FirebaseFirestore firestore;
+    private Dialog loadingDialog;
     private int nameCharLimit = 20;
     private int usernameCharLimit = 20;
     private int emailCharLimit = 40;
@@ -223,11 +227,13 @@ public class SettingsActivity extends AppCompatActivity {
     }
 
     private void updateUserProfileField(String field, String text, TextView textView) {
+        showLoadingScreen();
         FirebaseUser user = mAuth.getCurrentUser();
         if (user != null) {
             DocumentReference userRef = firestore.collection("users").document(user.getUid());
             userRef.update(field, text)
                     .addOnSuccessListener(aVoid -> {
+                        dismissLoadingScreen();
                         textView.setText(text);
                         if (field.equals("realName")) {
                             UserProfileChangeRequest profileUpdates = new UserProfileChangeRequest.Builder()
@@ -241,7 +247,10 @@ public class SettingsActivity extends AppCompatActivity {
                                     });
                         }
                     })
-                    .addOnFailureListener(e -> Toast.makeText(SettingsActivity.this, "Failed to update " + field, Toast.LENGTH_SHORT).show());
+                    .addOnFailureListener(e ->{
+                        Toast.makeText(SettingsActivity.this, "Failed to update " + field, Toast.LENGTH_SHORT).show();
+                        dismissLoadingScreen();
+                    });
         }
     }
 
@@ -264,10 +273,12 @@ public class SettingsActivity extends AppCompatActivity {
     }
 
     private void loadUserProfileData() {
+        showLoadingScreen();
         FirebaseUser user = mAuth.getCurrentUser();
         if (user != null) {
             DocumentReference userRef = firestore.collection("users").document(user.getUid());
             userRef.get().addOnSuccessListener(documentSnapshot -> {
+                dismissLoadingScreen();
                 if (documentSnapshot.exists()) {
                     if (documentSnapshot.contains("realName"))
                         nameTextView.setText(documentSnapshot.getString("realName"));
@@ -278,7 +289,11 @@ public class SettingsActivity extends AppCompatActivity {
                     if (documentSnapshot.contains("bio"))
                         bioTextView.setText(documentSnapshot.getString("bio"));
                 }
-            }).addOnFailureListener(e -> Toast.makeText(SettingsActivity.this, "Failed to load profile data", Toast.LENGTH_SHORT).show());
+            })
+                    .addOnFailureListener(e ->{
+                        Toast.makeText(SettingsActivity.this, "Failed to load profile data", Toast.LENGTH_SHORT).show();
+                        dismissLoadingScreen();
+                    });
         }
     }
 
@@ -300,19 +315,59 @@ public class SettingsActivity extends AppCompatActivity {
 
     private void showNameInputDialog(int limit, OnTextEnteredListener listener) {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setTitle("Enter Name");
 
-        final EditText input = new EditText(this);
-        input.setInputType(InputType.TYPE_CLASS_TEXT);
+        LayoutInflater inflater = this.getLayoutInflater();
+        View dialogView = inflater.inflate(R.layout.dialog_input, null);
+        builder.setView(dialogView);
+
+        final EditText input = dialogView.findViewById(R.id.dialogInput);
         input.setFilters(new InputFilter[]{new InputFilter.LengthFilter(limit)});
-        builder.setView(input);
 
-        builder.setPositiveButton("OK", (dialog, which) -> {
-            String text = input.getText().toString();
+        final AlertDialog dialog = builder.create();
+
+        Button buttonOk = dialogView.findViewById(R.id.buttonOk);
+        Button buttonCancel = dialogView.findViewById(R.id.buttonCancel);
+
+        Objects.requireNonNull(dialog.getWindow()).setBackgroundDrawable(new ColorDrawable(android.graphics.Color.TRANSPARENT));
+        buttonOk.setOnClickListener(v -> {
+            String text = input.getText().toString().trim();
             listener.onTextEntered(text);
+            dialog.dismiss();
         });
-        builder.setNegativeButton("Cancel", (dialog, which) -> dialog.cancel());
 
-        builder.show();
+        buttonCancel.setOnClickListener(v -> dialog.dismiss());
+
+        dialog.show();
+    }
+    private void showLoadingScreen() {
+        android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(this);
+        builder.setCancelable(false);
+
+        LayoutInflater inflater = this.getLayoutInflater();
+        View dialogView = inflater.inflate(R.layout.dialog_loading, null);
+
+        // Load GIF using Glide
+        ImageView loadingImageView = dialogView.findViewById(R.id.loading_image);
+        Glide.with(this)
+                .asGif()
+                .load(R.drawable.loading_animation)
+                .into(loadingImageView);
+
+        builder.setView(dialogView);
+
+        loadingDialog = builder.create();
+
+        // Make dialog background transparent
+        if (loadingDialog.getWindow() != null) {
+            loadingDialog.getWindow().setBackgroundDrawable(new ColorDrawable(android.graphics.Color.TRANSPARENT));
+        }
+
+        loadingDialog.show();
+    }
+
+    private void dismissLoadingScreen() {
+        if (loadingDialog != null && loadingDialog.isShowing()) {
+            loadingDialog.dismiss();
+        }
     }
 }
