@@ -104,10 +104,31 @@ public class SettingsActivity extends AppCompatActivity {
 
         textViewSelectProfileImage.setOnClickListener(v -> requestImagePermission());
 
-        imageButtonName.setOnClickListener(v -> showNameInputDialog(nameCharLimit, text -> updateUserProfileField("realName", text, nameTextView)));
-        imageButtonUsername.setOnClickListener(v -> showNameInputDialog(usernameCharLimit, text -> updateUserProfileField("username", text, usernameTextView)));
-        imageButtonEmail.setOnClickListener(v -> showNameInputDialog(emailCharLimit, text -> updateUserProfileField("email", text, emailTextView)));
-        imageButtonBio.setOnClickListener(v -> showNameInputDialog(bioCharLimit, text -> updateUserProfileField("bio", text, bioTextView)));
+
+        TextView labelName = findViewById(R.id.labelName);
+        TextView labelUsername = findViewById(R.id.labelUserName);
+        TextView labelEmail = findViewById(R.id.labelEmail);
+        TextView labelBio = findViewById(R.id.labelBio);
+
+        imageButtonName.setOnClickListener(v -> {
+            String title = "Enter " + labelName.getText().toString(); // Pobierz tytuł dynamicznie
+            showNameInputDialog(title, nameCharLimit, text -> updateUserProfileField("realName", text, nameTextView));
+        });
+
+        imageButtonUsername.setOnClickListener(v -> {
+            String title = "Enter " + labelUsername.getText().toString();
+            showNameInputDialog(title, usernameCharLimit, text -> updateUserProfileField("username", text, usernameTextView));
+        });
+
+        imageButtonEmail.setOnClickListener(v -> {
+            String title = "Enter " + labelEmail.getText().toString();
+            showNameInputDialog(title, emailCharLimit, text -> updateUserProfileField("email", text, emailTextView));
+        });
+
+        imageButtonBio.setOnClickListener(v -> {
+            String title = "Enter " + labelBio.getText().toString();
+            showNameInputDialog(title, bioCharLimit, text -> updateUserProfileField("bio", text, bioTextView));
+        });
 
         loadProfileImage();
         loadUserProfileData();
@@ -313,12 +334,15 @@ public class SettingsActivity extends AppCompatActivity {
         void onTextEntered(String text);
     }
 
-    private void showNameInputDialog(int limit, OnTextEnteredListener listener) {
+    private void showNameInputDialog(String title, int limit, OnTextEnteredListener listener) {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
 
         LayoutInflater inflater = this.getLayoutInflater();
         View dialogView = inflater.inflate(R.layout.dialog_input, null);
         builder.setView(dialogView);
+
+        final TextView dialogTitle = dialogView.findViewById(R.id.dialogTitle);
+        dialogTitle.setText(title);
 
         final EditText input = dialogView.findViewById(R.id.dialogInput);
         input.setFilters(new InputFilter[]{new InputFilter.LengthFilter(limit)});
