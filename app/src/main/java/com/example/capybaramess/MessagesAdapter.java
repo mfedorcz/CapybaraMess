@@ -47,11 +47,15 @@ public class MessagesAdapter extends RecyclerView.Adapter<MessagesAdapter.ViewHo
         ChatMessage message = mMessages.get(position);
         holder.messageTextView.setText(message.getContent());
 
-        // Format the timestamp to a readable date and time
+        //Format the timestamp to a readable date and time
         String formattedTimestamp = new SimpleDateFormat("dd MMM yyyy, HH:mm", Locale.getDefault()).format(new Date(message.getTimestamp()));
         String platformText = message.getPlatform() == ChatMessage.MessagePlatform.SMS ? "SMS" : "OTT";
-        String additionalInfoText = formattedTimestamp + " • " + platformText;
-        holder.additionalInfoTextView.setText(additionalInfoText);
+        String statusText = message.getPlatform() == ChatMessage.MessagePlatform.OTT     // Dodaj status tylko dla OTT
+                ? (message.getDeliveryStatus() == ChatMessage.DeliveryStatus.READ ? "✓✓ READ" : "✓ SENT")
+                : "";
+        // Tworzenie pełnego tekstu dodatkowego
+        String additionalInfoText = formattedTimestamp + " • " + platformText + (statusText.isEmpty() ? "" : " • " + statusText);
+        holder.additionalInfoTextView.setText(additionalInfoText);    // Ustawienie tekstu w widoku
 
         ConstraintLayout.LayoutParams messageParams = (ConstraintLayout.LayoutParams) holder.messageTextView.getLayoutParams();
         ConstraintLayout.LayoutParams infoParams = (ConstraintLayout.LayoutParams) holder.additionalInfoTextView.getLayoutParams();

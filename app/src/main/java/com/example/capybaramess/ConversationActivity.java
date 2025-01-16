@@ -6,6 +6,7 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
+import android.database.CursorJoiner;
 import android.graphics.Typeface;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
@@ -63,6 +64,7 @@ public class ConversationActivity extends AppCompatActivity {
     private BroadcastReceiver smsReceiver;
     private FirebaseFirestore firestore;
     private Contact contact;
+    private boolean isChatVisible = false;
     private ExecutorService executorService;
     private String phoneNumber; // Store the device's phone number
     private final int[] defaultImages = new int[]{
@@ -99,6 +101,8 @@ public class ConversationActivity extends AppCompatActivity {
             return;
         }
 
+        isChatVisible = true;
+
         // Get contact information
         contact = getIntent().getParcelableExtra("contact");
 
@@ -125,6 +129,18 @@ public class ConversationActivity extends AppCompatActivity {
     }
 
     @Override
+    protected void onResume() {
+        super.onResume();
+        isChatVisible = true;
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        isChatVisible = false;
+    }
+
+    @Override
     protected void onDestroy() {
         super.onDestroy();
         if (networkChangeReceiver != null) {
@@ -140,7 +156,8 @@ public class ConversationActivity extends AppCompatActivity {
                 message,
                 System.currentTimeMillis(),
                 ChatMessage.MessageType.OUTGOING,  //MessageType default set to OUTGOING
-                ChatMessage.MessagePlatform.SMS //MessagePlatform default to SMS
+                ChatMessage.MessagePlatform.SMS, //MessagePlatform default to SMS
+                ChatMessage.DeliveryStatus.SENT
         );
         // Check permission and send the message
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.SEND_SMS) != PackageManager.PERMISSION_GRANTED) {
@@ -244,7 +261,7 @@ public class ConversationActivity extends AppCompatActivity {
                                 // Check if the message is from the same thread
                                 if (sender.equals(contact.getAddress())) {
                                     ChatMessage newMessage = new ChatMessage(
-                                            sender, phoneNumber, messageBody, timestamp, ChatMessage.MessageType.INCOMING, ChatMessage.MessagePlatform.SMS
+                                            sender, phoneNumber, messageBody, timestamp, ChatMessage.MessageType.INCOMING, ChatMessage.MessagePlatform.SMS, ChatMessage.DeliveryStatus.READ
                                     );
                                     updateUIWithNewMessage(newMessage);
                                 }
@@ -279,7 +296,8 @@ public class ConversationActivity extends AppCompatActivity {
                         messageText,
                         System.currentTimeMillis(),
                         ChatMessage.MessageType.OUTGOING,  //MessageType default set to OUTGOING
-                        ChatMessage.MessagePlatform.SMS //MessagePlatform default to SMS
+                        ChatMessage.MessagePlatform.SMS, //MessagePlatform default to SMS
+                        ChatMessage.DeliveryStatus.SENT
                 );
                 // Clear the input field
                 messageEditText.setText("");
@@ -394,11 +412,13 @@ public class ConversationActivity extends AppCompatActivity {
 
     private void addMessageToConversation(DocumentReference conversationRef, ChatMessage message) {
         // Create a map to represent the message data
+
         Map<String, Object> messageData = new HashMap<>();
         messageData.put("senderId", message.getSenderId());
         messageData.put("recipientId", message.getRecipientId());
         messageData.put("content", message.getContent());
         messageData.put("timestamp", message.getTimestamp());
+        messageData.put("deliveryStatus", message.getDeliveryStatus().name());
 
         // Add the message to the messages subcollection
         conversationRef.collection("messages")
@@ -463,7 +483,7 @@ public class ConversationActivity extends AppCompatActivity {
                         int type = cursor.getInt(typeIdx);
 
                         String receiver = type == Telephony.Sms.MESSAGE_TYPE_SENT ? contact.getAddress() : phoneNumber;
-                        messages.add(new ChatMessage(sender, receiver, content, timestamp, type == Telephony.Sms.MESSAGE_TYPE_SENT ? ChatMessage.MessageType.OUTGOING : ChatMessage.MessageType.INCOMING, ChatMessage.MessagePlatform.SMS));
+                        messages.add(new ChatMessage(sender, receiver, content, timestamp, type == Telephony.Sms.MESSAGE_TYPE_SENT ? ChatMessage.MessageType.OUTGOING : ChatMessage.MessageType.INCOMING, ChatMessage.MessagePlatform.SMS, ChatMessage.DeliveryStatus.SENT));
                     } else {
                         Log.e("SMS Fetch", "One of the required columns is missing in the SMS database.");
                     }
@@ -488,11 +508,13 @@ public class ConversationActivity extends AppCompatActivity {
                         String recipientId = document.getString("recipientId");
                         String content = document.getString("content");
                         long timestamp = document.getLong("timestamp");
+                        String status = document.getString("deliveryStatus");
 
+                        ChatMessage.DeliveryStatus deliveryStatus = status != null ? ChatMessage.DeliveryStatus.valueOf(status) : ChatMessage.DeliveryStatus.SENT;
                         ChatMessage.MessageType messageType = senderId.equals(phoneNumber) ? ChatMessage.MessageType.OUTGOING : ChatMessage.MessageType.INCOMING;
-                        ChatMessage newMessage = new ChatMessage(senderId, recipientId, content, timestamp, messageType, ChatMessage.MessagePlatform.OTT);
+                        ChatMessage newMessage = new ChatMessage(senderId, recipientId, content, timestamp, messageType, ChatMessage.MessagePlatform.OTT, deliveryStatus);
 
-                        updateUIWithNewMessage(newMessage);  // This method now checks for duplicates
+                        updateUIWithNewMessage(newMessage);
                     }
                 })
                 .addOnFailureListener(e -> Log.e("Firebase", "Failed to fetch messages from Firebase", e));
@@ -517,11 +539,27 @@ public class ConversationActivity extends AppCompatActivity {
                             String recipientId = document.getString("recipientId");
                             String content = document.getString("content");
                             long timestamp = document.getLong("timestamp");
+                            String status = document.getString("deliveryStatus");
 
+                            ChatMessage.DeliveryStatus deliveryStatus = status != null ? ChatMessage.DeliveryStatus.valueOf(status) : ChatMessage.DeliveryStatus.SENT;
                             ChatMessage.MessageType messageType = senderId.equals(phoneNumber) ? ChatMessage.MessageType.OUTGOING : ChatMessage.MessageType.INCOMING;
-                            ChatMessage newMessage = new ChatMessage(senderId, recipientId, content, timestamp, messageType, ChatMessage.MessagePlatform.OTT);
-
-                            updateUIWithNewMessage(newMessage);  // This method now checks for duplicates
+                            ChatMessage newMessage = new ChatMessage(senderId, recipientId, content, timestamp, messageType, ChatMessage.MessagePlatform.OTT, deliveryStatus);
+                            //Zaktualizuj status wiadomości odbierającego
+                            if (isChatVisible && messageType == ChatMessage.MessageType.INCOMING && deliveryStatus == ChatMessage.DeliveryStatus.SENT) {
+                                markMessageAsRead(newMessage);
+                            }
+                            //Zaktualizuj status wiadomości dla wysyłającego
+                            if (messageType == ChatMessage.MessageType.OUTGOING && deliveryStatus == ChatMessage.DeliveryStatus.READ) {
+                                runOnUiThread(() -> {
+                                    for (ChatMessage msg : chatMessages) {
+                                        if (msg.equals(newMessage) && msg.getDeliveryStatus() != ChatMessage.DeliveryStatus.READ) {
+                                            msg.setDeliveryStatus(ChatMessage.DeliveryStatus.READ);
+                                            adapter.notifyDataSetChanged();
+                                        }
+                                    }
+                                });
+                            }
+                            updateUIWithNewMessage(newMessage);
                         }
                     }
                 });
@@ -577,6 +615,35 @@ public class ConversationActivity extends AppCompatActivity {
             NetworkInfo activeNetworkInfo = connectivityManager.getActiveNetworkInfo();
             return activeNetworkInfo != null && activeNetworkInfo.isConnected();
         }
+    }
+
+    private void markMessageAsRead(ChatMessage message) {
+        String conversationId = AppConfig.getConversationId(
+                contact.getAddress().length() == 9 ? "+48" + contact.getAddress() : contact.getAddress()
+        );
+
+        firestore.collection("conversations")
+                .document(conversationId)
+                .collection("messages")
+                .whereEqualTo("timestamp", message.getTimestamp())
+                .whereEqualTo("content", message.getContent())
+                .get()
+                .addOnSuccessListener(queryDocumentSnapshots -> {
+                    if (!queryDocumentSnapshots.isEmpty()) {
+                        for (DocumentSnapshot document : queryDocumentSnapshots.getDocuments()) {
+                            document.getReference().update("deliveryStatus", ChatMessage.DeliveryStatus.READ.name())
+                                    .addOnSuccessListener(aVoid -> {
+                                        Log.d("Firebase", "Message marked as READ.");
+                                        message.setDeliveryStatus(ChatMessage.DeliveryStatus.READ);
+                                        adapter.notifyDataSetChanged(); // Aktualizacja UI.
+                                    })
+                                    .addOnFailureListener(e -> Log.e("Firebase", "Failed to update message status.", e));
+                        }
+                    } else {
+                        Log.e("Firebase", "No matching message found to mark as READ.");
+                    }
+                })
+                .addOnFailureListener(e -> Log.e("Firebase", "Failed to fetch messages to update.", e));
     }
 
 }

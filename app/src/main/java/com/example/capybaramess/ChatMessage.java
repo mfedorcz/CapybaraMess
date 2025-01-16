@@ -10,23 +10,35 @@ public class ChatMessage {
     private MessageType type;
     // Enum to distinguish between incoming and outgoing messages
     private MessagePlatform platform;  // Whether the message is SMS or OTT
+    private DeliveryStatus deliveryStatus;
     public enum MessageType {
         INCOMING, OUTGOING
     }
     public enum MessagePlatform {
         SMS, OTT
     }
+    public enum DeliveryStatus {
+        SENT, READ
+    }
     // Constructor
-    public ChatMessage(String senderId, String recipientId, String content, long timestamp, MessageType type, MessagePlatform platform) {
+    public ChatMessage(String senderId, String recipientId, String content, long timestamp, MessageType type, MessagePlatform platform, DeliveryStatus deliveryStatus) {
         this.senderId = senderId;
         this.recipientId = recipientId;
         this.content = content;
         this.timestamp = timestamp;
         this.type = type;
         this.platform = platform;
+        this.deliveryStatus = deliveryStatus;
     }
 
     // Getters and Setters
+    public DeliveryStatus getDeliveryStatus() {
+        return deliveryStatus;
+    }
+
+    public void setDeliveryStatus(DeliveryStatus deliveryStatus) {
+        this.deliveryStatus = deliveryStatus;
+    }
     public String getSenderId() {
         return senderId;
     }
